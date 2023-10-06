@@ -1,0 +1,408 @@
+Vendor (New app)
+-For multi-vendor support
+-Check warehouse
+-Can only manage products of their own brand
+-Can be active or inactive
+
+Account (App)
+-Add in vendor field
+
+Scores (New app) - for each user
+-ProductColor (New Model) (need to be here instead of under product due to circular import issue with Attribute)
+-> For neural representation
+-ProductColor has overall score
+-Overall score
+-View history
+-Wishlist (New model, under same app? call preference?)
+-Dislike (New model)
+-In cart (see checkout model)
+-Product score is derived from ProductColor score (is productcolor really sufficient?)
+-Auto profile to track a new user's behaviour (Account only required when making a purchase)
+-Add to cart should update scores, purchase should update scores also
+-Handle variant/product update where color changes
+-Ensure that color is always created for each variant
+
+Product (App)
+-Product model
+-> Add Vendor field
+
+
+Collection
+-Vendor
+
+Search
+-Text Search (Check out the integration)
+-Image Search (search a full body image for multiple products)
+
+Cart
+-Currently, storing add to cart in the frontend, to switch to backend.
+
+GraphQL Product
+-Query by score (but give products, productcolor sorted by score)
+
+Track any action that is done by user
+Do soft delete only with history backups
+
+LogIn
+-Use mobile number
+
+Order
+-Create accommodation model. Eventually, accommodation availability should be pulled?
+-Make sure stock does not decrease on fulfilment
+
+CHECK PERMISSIONS
+
+Update product_preference, scores, when products are updated or removed
+
+Data Upload
+-set isavailable for purchase at product channel listing
+
+--------
+
+Separate app that does ranking
+-Everytime new products are added, get their neural representation and add to index
+->Products can only be queried after being added to index
+-Remove from index when products are removed or discontinued
+
+
+How to get businesses on board? 
+-Offer to do redirect link to their website. Either crawl their data or pull through API. (Only as last resort)
+
+
+Update score when added to wishlist
+-If removed immediately, revert score
+-If removed after some time threshold, revert score but lesser
+
+Default Sizing recommendation based on past purchases
+-If added to wishlist without sizing selected, add variant with unknown Size to wishlist.
+-When added to wishlist, when visiting a product page
+-Before this recommendation is possible - don't recommend? Set size as unknown when added to wishlist?
+
+
+--------
+
+Vendor dashboard
+-statistics
+
+
+
+---------
+
+Useful resource
+https://milvus.io/blog/2021-11-26-accelerating-candidate-generation-in-recommender-systems-using-milvus-paired-with-paddlepaddle.md
+
+
+saleor order process:
+create checkout -> update checkout -> complete checkout -> create order
+
+WAREHOUSING AND STOCKS
+create warehouse -> add warehouse to channel -> create shipping zone
+
+
+PW of postgres super user on mac
+user: postgres
+password: postgres
+port: 5432
+
+
+docker run -d --name dev-postgres -e POSTGRES_PASSWORD=AbCdEfG987! -v ${HOME}/postgres-data/:/var/lib/postgresql/data -p 5432:5432 postgres
+
+desktop accounts
+postgres:
+- user: postgres, password: AbCdEfG987!
+saleor:
+superuser@saleor.com superuser    
+customer@example.com secret
+
+In conda environment sp_search:
+uvicorn sp_search.main:app --port 8001 --reload
+
+DEBUG REACT
+react-devtools
+
+
+-------------------------------------------------
+Authentication
+
+mutation {
+  accountRegister(
+    input: {
+      email: "customer@example.com"
+      password: "secret"
+      channel: "default-channel"
+    }
+  ) {
+    errors {
+      field
+      code
+    }
+    user {
+      email
+      isActive
+    }
+  }
+}
+
+mutation {
+  tokenCreate(email: "customer@example.com", password: "secret") {
+    token
+    refreshToken
+    errors {
+      field
+      message
+    }
+  }
+}
+
+{
+  "Authorization": "Bearer <your-access-token>"
+}
+
+--------------------------------
+
+mutation CreateShippingZone{
+  shippingZoneCreate(
+    input: {
+      name:"default shipping zone",
+      countries:["SG"],
+      default:true,
+      addWarehouses:["V2FyZWhvdXNlOjhlMDU2NTc2LWRlM2YtNGY5Ni1hOTEyLWUyN2QyOWU2ZmE4Zg=="],
+      addChannels:["Q2hhbm5lbDox"]
+    }
+  ){
+    shippingZone{
+      id
+    }
+    errors{
+      field
+      message
+    }
+  }
+}
+
+mutation CreateStock{
+  productVariantStocksCreate(
+    variantId:"UHJvZHVjdFZhcmlhbnQ6MzU2MjU=",
+    stocks:[
+      {
+        warehouse: "V2FyZWhvdXNlOjhlMDU2NTc2LWRlM2YtNGY5Ni1hOTEyLWUyN2QyOWU2ZmE4Zg==",
+        availabilityStart:"2016-01-02T15:04:05",
+        availabilityEnd:"2036-01-02T15:04:05",
+        quantity: 5
+      }
+    ]
+  ){
+    productVariant{
+      quantityAvailable(
+        datetimeStart:"2016-01-02T15:04:05",
+        datetimeEnd:"2036-01-02T15:04:05"
+      )
+    } errors{
+      field
+    }
+  }
+}
+
+mutation CreateWarehouse{
+  createWarehouse(input:{
+    name:"default warehouse",
+    address:{
+      country:SG,
+      postalCode:"000000",
+      streetAddress1:"warehouse placeholder address"
+    }
+  }){
+    warehouse{
+      id
+    }errors{
+      field
+    }
+  }
+}
+
+mutation AddWarehouseToChannel{
+  channelUpdate(
+    id:"Q2hhbm5lbDox",
+    input:{
+      addWarehouses:["V2FyZWhvdXNlOjhlMDU2NTc2LWRlM2YtNGY5Ni1hOTEyLWUyN2QyOWU2ZmE4Zg=="]
+    }
+  ){
+    channel{
+      warehouses{
+        slug
+      }
+    }
+  }
+}
+
+------------------------------
+
+Checkout creation
+
+mutation CreateCheckout{
+  checkoutCreate(
+    input:{
+      channel:"default-channel",
+      lines: [{quantity: 1, variantId: "UHJvZHVjdFZhcmlhbnQ6MzU2MjQ="}],
+      rentalStart: "2022-05-01T00:00:00",
+      rentalEnd: "2022-05-02T00:00:00"
+    }
+  ){
+    checkout{
+      id
+    }
+    errors{
+      field
+      message
+    }
+  }
+}
+
+mutation UpdateCheckoutEmail{
+  checkoutEmailUpdate(
+    id: "Q2hlY2tvdXQ6YTZjMmYzNTItNDE5NC00ODQzLTk2N2YtODJmNDY5YjI2ZDQ2"
+    email: "test_customer@example.com"
+  ) {
+    checkout {
+      id
+      email
+    }
+    errors {
+      field
+      message
+    }
+  }
+}
+
+mutation CreateShippingMethod{
+  shippingPriceCreate(
+    input:{
+      name:"default-shipping",
+      type:PRICE,
+      shippingZone:"U2hpcHBpbmdab25lOjE="
+    }
+  ){
+    shippingMethod{
+      id
+      name
+    }
+    errors{
+      field
+      message
+    }
+  }
+}
+
+# not sure if this step is necessary
+
+mutation UpdateShippingMethodChannelList{
+  shippingMethodChannelListingUpdate(
+    id:"U2hpcHBpbmdNZXRob2RUeXBlOjE=",
+    input:{
+      addChannels:{channelId:"Q2hhbm5lbDox",price:0}
+    }
+  ){
+    shippingMethod{
+      id
+      channelListings{
+        channel{
+          name
+        }
+      }
+    }
+    errors{
+      field
+      message
+    }
+  }
+}
+
+# need to get the id again because shipping method id somehow changes
+
+query GetShippingZones{
+  shop{
+    availableShippingMethods(channel:"default-channel"){
+      name
+      id
+      price{
+        amount
+      }
+    }
+  }
+}
+
+mutation UpdateCheckoutShippingAddress{
+  checkoutShippingAddressUpdate(
+    id:"Q2hlY2tvdXQ6YTZjMmYzNTItNDE5NC00ODQzLTk2N2YtODJmNDY5YjI2ZDQ2",
+    shippingAddress:{
+      postalCode:"121464",
+      country:SG,
+      streetAddress1:"voco"
+    }
+    
+  ){
+    checkout{
+      id
+    }
+    errors{
+      field
+      message
+    }
+  }
+}
+
+mutation UpdateCheckoutBillingAddress{
+  checkoutBillingAddressUpdate(
+    id:"Q2hlY2tvdXQ6YTZjMmYzNTItNDE5NC00ODQzLTk2N2YtODJmNDY5YjI2ZDQ2",
+    billingAddress:{
+      postalCode:"640210",
+      country:SG,
+      streetAddress1:"Billing address"
+    }
+    
+  ){
+    checkout{
+      id
+    }
+    errors{
+      field
+      message
+    }
+  }
+}
+
+mutation UpdateCheckoutDeliveryMethod{
+  checkoutDeliveryMethodUpdate(
+    deliveryMethodId:"U2hpcHBpbmdNZXRob2Q6MQ==",
+    id:"Q2hlY2tvdXQ6YTZjMmYzNTItNDE5NC00ODQzLTk2N2YtODJmNDY5YjI2ZDQ2"
+  ){
+    checkout{
+      id
+    }
+    errors{
+      field
+      message
+    }
+  }
+}
+
+
+---------------------------------------
+
+Steps to set up
+
+1. Create virtual environment and install dependencies
+python -m venv venv_wtg_backend
+python -m pip install -r requirements.txt
+pip uninstall python-magic
+pip install python-magic-bin
+
+2. Create database through pgadmin -> docker
+
+3. Update db settings and migrate
+postgres://user:password@localhost:5432/wtg_backend
+python .\manage.py migrate
+
+4. Create superuser
+python .\manage.py createsuperuser
+superuser@saleor.com superuser   

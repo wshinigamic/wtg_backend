@@ -159,6 +159,8 @@ def _process_shipping_data_for_order(
         "base_shipping_price": base_shipping_price,
         "shipping_price": shipping_price,
         "weight": checkout_info.checkout.get_total_weight(lines),
+        "rental_start": checkout_info.checkout.rental_start,
+        "rental_end": checkout_info.checkout.rental_end,
         **get_shipping_tax_class_kwargs_for_order(tax_class),
     }
     result.update(delivery_method_info.delivery_method_order_field)
@@ -509,7 +511,7 @@ def _prepare_order_data(
 
     return order_data
 
-
+# TODO: check difference between _create_order and _create_order_from_checkout
 @traced_atomic_transaction()
 def _create_order(
     *,

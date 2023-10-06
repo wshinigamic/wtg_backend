@@ -62,6 +62,9 @@ class Checkout(models.Model):
         null=True,
         on_delete=models.SET_NULL,
     )
+
+    # shipping_address will be the accommodation address
+    # TODO: consider adding accommodation object and change shipping address to accommodation instead
     shipping_address = models.ForeignKey(
         "account.Address",
         related_name="+",
@@ -174,6 +177,10 @@ class Checkout(models.Model):
     )
 
     tax_exemption = models.BooleanField(default=False)
+
+    # TODO: consider if rental_start and end should be required
+    rental_start = models.DateTimeField(blank=True, null=True)
+    rental_end = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         ordering = ("-last_change", "pk")

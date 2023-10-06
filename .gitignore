@@ -25,6 +25,7 @@ dist/
 .venv
 env/
 venv/
+venv_wtg_backend/
 ENV/
 env.bak/
 venv.bak/

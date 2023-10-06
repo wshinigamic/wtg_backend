@@ -241,6 +241,7 @@ def add_variants_to_checkout(
             if line.pk not in updated_lines_ids:
                 lines_to_update_reservation_time.append(line)
 
+        # TODO: consider if reservation is required
         reserve_stocks_and_preorders(
             to_reserve,
             lines_to_update_reservation_time,
