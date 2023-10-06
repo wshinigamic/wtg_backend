@@ -145,6 +145,8 @@ class Order(ModelWithMetadata, ModelWithExternalReference):
         null=True,
         on_delete=models.SET_NULL,
     )
+    # shipping_address will be the accommodation address
+    # TODO: consider adding accommodation object and change shipping address to accommodation instead
     shipping_address = models.ForeignKey(
         "account.Address",
         related_name="+",
@@ -152,6 +154,11 @@ class Order(ModelWithMetadata, ModelWithExternalReference):
         null=True,
         on_delete=models.SET_NULL,
     )
+    # Looking at start and end date should be sufficient mostly, but there could be cases of early/
+    # late checkout that might need to be handled
+    # TODO: consider if rental_start and end should be required
+    rental_start = models.DateTimeField(blank=True, null=True)
+    rental_end = models.DateTimeField(blank=True, null=True)
     user_email = models.EmailField(blank=True, default="")
     original = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL

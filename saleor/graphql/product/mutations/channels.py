@@ -11,6 +11,7 @@ from ....checkout.models import CheckoutLine
 from ....core.tracing import traced_atomic_transaction
 from ....core.utils.date_time import convert_to_utc_date_time
 from ....permission.enums import ProductPermissions
+from ....preference.models import ProductColor, ProductColorChannelListing
 from ....product.error_codes import CollectionErrorCode, ProductErrorCode
 from ....product.models import CollectionChannelListing
 from ....product.models import Product as ProductModel
@@ -545,6 +546,23 @@ class ProductVariantChannelListingUpdate(BaseMutation):
             manager = get_plugin_manager_promise(info.context).get()
             cls.call_event(manager.product_variant_updated, variant)
 
+
+    @classmethod
+    def post_save_action(cls, _info, instance, cleaned_input):
+        # TODO: shift COLOR_ATTRIBUTE_NAME to settings
+        COLOR_ATTRIBUTE_NAME = "Color"
+        product_color = ProductColor.objects.get(
+            product=instance.product, 
+            color=instance.attributes.get(assignment__attribute__name=COLOR_ATTRIBUTE_NAME).values.all()[0]
+        )
+        for channel_listing_data in cleaned_input:
+            channel = channel_listing_data["channel"]
+            ProductColorChannelListing.objects.update_or_create(
+                product_color=product_color,
+                channel=channel
+            )
+
+
     @classmethod
     def perform_mutation(  # type: ignore[override]
         cls, _root, info: ResolveInfo, /, *, id=None, input, sku=None
@@ -577,6 +595,7 @@ class ProductVariantChannelListingUpdate(BaseMutation):
             raise ValidationError(errors)
 
         cls.save(info, variant, cleaned_input)
+        cls.post_save_action(info, variant, cleaned_input)
 
         return ProductVariantChannelListingUpdate(
             variant=ChannelContext(node=variant, channel_slug=None)

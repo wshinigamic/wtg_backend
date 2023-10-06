@@ -9,6 +9,7 @@ from .....attribute import AttributeInputType
 from .....attribute import models as attribute_models
 from .....core.tracing import traced_atomic_transaction
 from .....permission.enums import ProductPermissions
+from .....preference import models as preference_models
 from .....product import models
 from .....product.error_codes import ProductErrorCode
 from .....product.search import update_product_search_vector
@@ -204,9 +205,11 @@ class ProductVariantCreate(ModelMutation):
                 }
             )
 
-        stocks = cleaned_input.get("stocks")
-        if stocks:
-            cls.check_for_duplicates_in_stocks(stocks)
+        # Don't need to check for warehouse ID duplicates since that is now allowed.
+        # TODO: consider if need to check for availability_start/end duplicate
+        # stocks = cleaned_input.get("stocks")
+        # if stocks:
+        #     cls.check_for_duplicates_in_stocks(stocks)
 
         if instance.pk:
             # If the variant is getting updated,
@@ -351,3 +354,26 @@ class ProductVariantCreate(ModelMutation):
     def success_response(cls, instance):
         instance = ChannelContext(node=instance, channel_slug=None)
         return super().success_response(instance)
+
+    @classmethod
+    def post_save_action(cls, _info, instance, _cleaned_input):
+        # Create a ProductColor if it does not exists
+        # TODO: shift COLOR_ATTRIBUTE_NAME to settings
+        COLOR_ATTRIBUTE_NAME = "Color"
+        color_value = instance.attributes.get(assignment__attribute__name=COLOR_ATTRIBUTE_NAME).values.all()[0]
+        product_color, created = preference_models.ProductColor.objects.get_or_create(
+            product = instance.product,
+            color = color_value
+        )
+        if created:
+            # Create ProductScore for all users
+            # TODO: care about concurrency
+            product_scores = preference_models.ProductScore.objects.filter(product=instance.product)
+            product_color_scores = [
+                preference_models.ProductColorScore(
+                    product_score = product_score,
+                    product_color = product_color
+                ) for product_score in product_scores
+            ]
+            preference_models.ProductColorScore.objects.bulk_create(product_color_scores, batch_size=1000)
+            #TODO: get neural representation and add to faiss index

@@ -4,6 +4,7 @@ from django.utils.functional import SimpleLazyObject
 from graphql import GraphQLScalarType
 
 from ..graphql.notifications.schema import ExternalNotificationMutations
+from .accommodation.schema import AccommodationQueries, AccommodationMutations
 from .account.schema import AccountMutations, AccountQueries
 from .app.schema import AppMutations, AppQueries
 from .attribute.schema import AttributeMutations, AttributeQueries
@@ -22,6 +23,7 @@ from .order.schema import OrderMutations, OrderQueries
 from .page.schema import PageMutations, PageQueries
 from .payment.schema import PaymentMutations, PaymentQueries
 from .plugins.schema import PluginsMutations, PluginsQueries
+from .preference.schema import PreferenceQueries, PreferenceMutations
 from .product.schema import ProductMutations, ProductQueries
 from .shipping.schema import ShippingMutations, ShippingQueries
 from .shop.schema import ShopMutations, ShopQueries
@@ -40,6 +42,7 @@ API_PATH = SimpleLazyObject(lambda: reverse("api"))
 
 
 class Query(
+    AccommodationQueries,
     AccountQueries,
     AppQueries,
     AttributeQueries,
@@ -54,6 +57,7 @@ class Query(
     OrderQueries,
     PageQueries,
     PaymentQueries,
+    PreferenceQueries,
     ProductQueries,
     ShippingQueries,
     ShopQueries,
@@ -84,6 +88,7 @@ class Mutation(
     OrderMutations,
     PageMutations,
     PaymentMutations,
+    PreferenceMutations,
     ProductMutations,
     ShippingMutations,
     ShopMutations,

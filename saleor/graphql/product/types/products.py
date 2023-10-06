@@ -15,6 +15,7 @@ from ....core.weight import convert_weight_to_default_weight_unit
 from ....permission.auth_filters import AuthorizationFilters
 from ....permission.enums import OrderPermissions, ProductPermissions
 from ....permission.utils import has_one_of_permissions
+from ....preference import models as preference_models
 from ....product import models
 from ....product.models import ALL_PRODUCTS_PERMISSIONS
 from ....product.utils import calculate_revenue_for_variant
@@ -41,6 +42,7 @@ from ...attribute.resolvers import resolve_attributes
 from ...attribute.types import (
     AssignedVariantAttribute,
     Attribute,
+    AttributeValue,
     AttributeCountableConnection,
     SelectedAttribute,
 )
@@ -95,6 +97,12 @@ from ...plugins.dataloaders import get_plugin_manager_promise
 from ...product.dataloaders.products import (
     AvailableProductVariantsByProductIdAndChannel,
     ProductVariantsByProductIdAndChannel,
+    ProductColorsByProductIdLoader,
+    ProductColorsByProductIdAndChannel,
+    AvailableProductColorsByProductIdAndChannel,
+    ProductVariantsByProductColorIdLoader, 
+    ProductVariantsByProductColorIdAndChannel, 
+    AvailableProductVariantsByProductColorIdAndChannel,
 )
 from ...site.dataloaders import load_site_callback
 from ...tax.dataloaders import (
@@ -364,6 +372,16 @@ class ProductVariant(ChannelContextTypeWithMetadata[models.ProductVariant]):
                 f"{DEPRECATED_IN_3X_INPUT} Use `address` argument instead."
             ),
         ),
+        datetime_start=graphene.Argument(
+            graphene.DateTime,
+            required=True,
+            description="Start of datetime range to check stocks information."
+        ),
+        datetime_end=graphene.Argument(
+            graphene.DateTime,
+            required=True,
+            description="End of datetime range to check stocks information."
+        ),
         permissions=[
             ProductPermissions.MANAGE_PRODUCTS,
             OrderPermissions.MANAGE_ORDERS,
@@ -387,6 +405,16 @@ class ProductVariant(ChannelContextTypeWithMetadata[models.ProductVariant]):
                 "quantity from all shipping zones. "
                 f"{DEPRECATED_IN_3X_INPUT} Use `address` argument instead."
             ),
+        ),
+        datetime_start=graphene.Argument(
+            graphene.DateTime,
+            required=True,
+            description="Start of datetime range to check stocks information."
+        ),
+        datetime_end=graphene.Argument(
+            graphene.DateTime,
+            required=True,
+            description="End of datetime range to check stocks information."
         ),
     )
     preorder = graphene.Field(
@@ -429,12 +457,14 @@ class ProductVariant(ChannelContextTypeWithMetadata[models.ProductVariant]):
         info,
         address=None,
         country_code=None,
+        datetime_start=None,
+        datetime_end=None,
     ):
         if address is not None:
             country_code = address.country
         return StocksWithAvailableQuantityByProductVariantIdCountryCodeAndChannelLoader(
             info.context
-        ).load((root.node.id, country_code, root.channel_slug))
+        ).load((root.node.id, country_code, root.channel_slug, datetime_start, datetime_end))
 
     @staticmethod
     @load_site_callback
@@ -444,6 +474,9 @@ class ProductVariant(ChannelContextTypeWithMetadata[models.ProductVariant]):
         site,
         address=None,
         country_code=None,
+        datetime_start=None,
+        datetime_end=None,
+
     ):
         if address is not None:
             country_code = address.country
@@ -451,6 +484,7 @@ class ProductVariant(ChannelContextTypeWithMetadata[models.ProductVariant]):
         global_quantity_limit_per_checkout = site.settings.limit_quantity_per_checkout
 
         if root.node.is_preorder_active():
+            # TODO: check if datetime_start/ datetime_end is needed here
             variant = root.node
             channel_listing = VariantChannelListingByVariantIdAndChannelSlugLoader(
                 info.context
@@ -549,7 +583,7 @@ class ProductVariant(ChannelContextTypeWithMetadata[models.ProductVariant]):
 
         return AvailableQuantityByProductVariantIdCountryCodeAndChannelSlugLoader(
             info.context
-        ).load((root.node.id, country_code, channel_slug))
+        ).load((root.node.id, country_code, channel_slug, datetime_start, datetime_end))
 
     @staticmethod
     def resolve_digital_content(root: ChannelContext[models.ProductVariant], _info):
@@ -829,6 +863,62 @@ class ProductVariantCountableConnection(CountableConnection):
 
 
 @federated_entity("id channel")
+class ProductColor(ChannelContextTypeWithMetadata, ModelObjectType):
+    #TODO: @federated_entity was used in saleor>graphql>product>types>products.py>ProductVariant/Product to understand what is the use
+    #TODO: check differences between "only_fields" and "fields"
+    product = graphene.Field(lambda: Product, required=True)
+    variants = graphene.List(
+        ProductVariant, description="List of variants for the product of this color."
+    )
+    color = graphene.Field(AttributeValue)
+
+    class Meta:
+        default_resolver = ChannelContextType.resolver_with_context
+        description = "Represents a product variant based on its color."
+        only_fields = ["id", "product", "color"]
+        interfaces = [relay.Node, ObjectWithMetadata]
+        model = preference_models.ProductColor
+
+    @staticmethod
+    def resolve_product(root, info):
+        product = ProductByIdLoader(info.context).load(root.node.product_id)
+        return product.then(
+            lambda product: ChannelContext(node=product, channel_slug=root.channel_slug)
+        )
+
+    @staticmethod
+    def resolve_variants(root: ChannelContext[preference_models.ProductColor], info):
+        requestor = get_user_or_app_from_context(info.context)
+        has_required_permissions = has_one_of_permissions(
+            requestor, ALL_PRODUCTS_PERMISSIONS
+        )
+        if has_required_permissions and not root.channel_slug:
+            variants = ProductVariantsByProductColorIdLoader(info.context).load(root.node.id)
+        elif has_required_permissions and root.channel_slug:
+            variants = ProductVariantsByProductColorIdAndChannel(info.context).load(
+                (root.node.id, root.channel_slug)
+            )
+        else:
+            variants = AvailableProductVariantsByProductColorIdAndChannel(info.context).load(
+                (root.node.id, root.channel_slug)
+            )
+
+        def map_channel_context(variants):
+            return [
+                ChannelContext(node=variant, channel_slug=root.channel_slug)
+                for variant in variants
+            ]
+
+        return variants.then(map_channel_context)
+
+
+class ProductColorCountableConnection(CountableConnection):
+    class Meta:
+        # TODO: doc_category
+        node = ProductColor
+
+
+@federated_entity("id channel")
 class Product(ChannelContextTypeWithMetadata[models.Product]):
     id = graphene.GlobalID(required=True, description="The ID of the product.")
     seo_title = graphene.String(description="SEO title of the product.")
@@ -938,6 +1028,14 @@ class Product(ChannelContextTypeWithMetadata[models.Product]):
         ProductVariant,
         description=(
             "List of variants for the product. Requires the following permissions to "
+            "include the unpublished items: "
+            f"{', '.join([p.name for p in ALL_PRODUCTS_PERMISSIONS])}."
+        ),
+    )
+    product_colors = NonNullList(
+        ProductColor,
+        description=(
+            "List of color variants for the product. Requires the following permissions to "
             "include the unpublished items: "
             f"{', '.join([p.name for p in ALL_PRODUCTS_PERMISSIONS])}."
         ),
@@ -1390,6 +1488,31 @@ class Product(ChannelContextTypeWithMetadata[models.Product]):
             ]
 
         return variants.then(map_channel_context)
+    
+    @staticmethod
+    def resolve_product_colors(root: ChannelContext[models.Product], info):
+        requestor = get_user_or_app_from_context(info.context)
+        has_required_permissions = has_one_of_permissions(
+            requestor, ALL_PRODUCTS_PERMISSIONS
+        )
+        if has_required_permissions and not root.channel_slug:
+            product_colors = ProductColorsByProductIdLoader(info.context).load(root.node.id)
+        elif has_required_permissions and root.channel_slug:
+            product_colors = ProductColorsByProductIdAndChannel(info.context).load(
+                (root.node.id, root.channel_slug)
+            )
+        else:
+            product_colors = AvailableProductColorsByProductIdAndChannel(info.context).load(
+                (root.node.id, root.channel_slug)
+            )
+
+        def map_channel_context(product_colors):
+            return [
+                ChannelContext(node=product_color, channel_slug=root.channel_slug)
+                for product_color in product_colors
+            ]
+
+        return product_colors.then(map_channel_context)
 
     @staticmethod
     def resolve_channel_listings(root: ChannelContext[models.Product], info):

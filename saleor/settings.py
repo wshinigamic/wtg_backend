@@ -242,6 +242,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     # Local apps
     "saleor.permission",
+    "saleor.accommodation",
     "saleor.auth",
     "saleor.plugins",
     "saleor.account",
@@ -257,6 +258,7 @@ INSTALLED_APPS = [
     "saleor.menu",
     "saleor.order",
     "saleor.invoice",
+    "saleor.preference",
     "saleor.seo",
     "saleor.shipping",
     "saleor.site",
@@ -433,7 +435,7 @@ TEST_RUNNER = "saleor.tests.runner.PytestTestRunner"
 
 PLAYGROUND_ENABLED = get_bool_from_env("PLAYGROUND_ENABLED", True)
 
-ALLOWED_HOSTS = get_list(os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1"))
+ALLOWED_HOSTS = get_list(os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,10.0.2.2"))
 ALLOWED_GRAPHQL_ORIGINS: List[str] = get_list(
     os.environ.get("ALLOWED_GRAPHQL_ORIGINS", "*")
 )
@@ -799,7 +801,7 @@ if REDIS_URL:
 CACHES = {"default": django_cache_url.config()}
 CACHES["default"]["TIMEOUT"] = parse(os.environ.get("CACHE_TIMEOUT", "7 days"))
 
-JWT_EXPIRE = True
+JWT_EXPIRE = False
 JWT_TTL_ACCESS = timedelta(seconds=parse(os.environ.get("JWT_TTL_ACCESS", "5 minutes")))
 JWT_TTL_APP_ACCESS = timedelta(
     seconds=parse(os.environ.get("JWT_TTL_APP_ACCESS", "5 minutes"))
@@ -860,3 +862,6 @@ CONFIRMATION_EMAIL_LOCK_TIME = parse(
 OAUTH_UPDATE_LAST_LOGIN_THRESHOLD = parse(
     os.environ.get("OAUTH_UPDATE_LAST_LOGIN_THRESHOLD", "15 minutes")
 )
+
+
+SEARCH_URI = "http://127.0.0.1:8001/update-scores"

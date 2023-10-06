@@ -112,6 +112,8 @@ class CheckoutLinesUpdate(CheckoutLinesAdd):
         channel_slug,
         delivery_method_info,
         lines=None,
+        rental_start=None,
+        rental_end=None
     ):
         variants, quantities = get_variants_and_total_quantities(
             variants, checkout_lines_data, quantity_to_update_check=True
@@ -128,6 +130,8 @@ class CheckoutLinesUpdate(CheckoutLinesAdd):
             existing_lines=lines,
             replace=True,
             check_reservations=is_reservation_enabled(site.settings),
+            rental_start=rental_start,
+            rental_end=rental_end
         )
 
     @classmethod

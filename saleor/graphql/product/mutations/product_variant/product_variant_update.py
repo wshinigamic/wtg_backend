@@ -8,6 +8,7 @@ from django.utils.text import slugify
 from .....attribute import AttributeInputType
 from .....attribute import models as attribute_models
 from .....permission.enums import ProductPermissions
+from .....preference import models as preference_models
 from .....product import models
 from ....attribute.utils import AttributeAssignmentMixin, AttrValuesInput
 from ....core import ResolveInfo
@@ -153,11 +154,36 @@ class ProductVariantUpdate(ProductVariantCreate, ModelWithExtRefMutation):
             "external_reference",
             external_reference,
         )
-        return super().perform_mutation(
-            root,
+
+        instance = cls.get_instance(
             info,
             external_reference=external_reference,
             id=id,
             sku=sku,
             input=input,
         )
+        COLOR_ATTRIBUTE_NAME = "color"
+        color_value = instance.attributes.get(assignment__attribute__name=COLOR_ATTRIBUTE_NAME).values.all()[0]
+
+        data = input
+        cleaned_input = cls.clean_input(info, instance, data)
+        metadata_list = cleaned_input.pop("metadata", None)
+        private_metadata_list = cleaned_input.pop("private_metadata", None)
+        instance = cls.construct_instance(instance, cleaned_input)
+
+        cls.validate_and_update_metadata(instance, metadata_list, private_metadata_list)
+        cls.clean_instance(info, instance)
+        cls.save(info, instance, cleaned_input)
+        cls._save_m2m(info, instance, cleaned_input)
+        cls.post_save_action(info, instance, cleaned_input)
+
+        new_color_value = instance.attributes.get(assignment__attribute__name=COLOR_ATTRIBUTE_NAME).values.all()[0]
+        if new_color_value != color_value:
+            # Check if color_value Variants still exist, else, delete ProductColor
+            variant_color_values = instance.product.variants.attributes.filter(assignment__attribute__name=COLOR_ATTRIBUTE_NAME).values.all()
+            if new_color_value not in variant_color_values:
+                preference_models.ProductColor.objects.filter(
+                    product=instance.product, color=color_value
+                ).delete()
+
+        return cls.success_response(instance)

@@ -143,6 +143,8 @@ def check_lines_quantity(
     existing_lines=None,
     replace=False,
     check_reservations=False,
+    rental_start=None,
+    rental_end=None
 ):
     """Clean quantities and check if stock is sufficient for each checkout line.
 
@@ -183,6 +185,8 @@ def check_lines_quantity(
             existing_lines=existing_lines,
             replace=replace,
             check_reservations=check_reservations,
+            rental_start=rental_start,
+            rental_end=rental_end
         )
     except InsufficientStock as e:
         errors = [

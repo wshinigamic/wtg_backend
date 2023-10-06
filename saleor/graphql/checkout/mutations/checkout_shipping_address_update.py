@@ -92,6 +92,8 @@ class CheckoutShippingAddressUpdate(AddressMetadataMixin, BaseMutation, I18nMixi
         country: str,
         channel_slug: str,
         delivery_method_info: "DeliveryMethodBase",
+        rental_start,
+        rental_end
     ) -> None:
         variants = []
         quantities = []
@@ -111,6 +113,8 @@ class CheckoutShippingAddressUpdate(AddressMetadataMixin, BaseMutation, I18nMixi
             replace=True,
             existing_lines=lines,
             check_reservations=is_reservation_enabled(site.settings),
+            rental_start=rental_start,
+            rental_end=rental_end
         )
 
     @classmethod

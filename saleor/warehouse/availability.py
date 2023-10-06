@@ -120,6 +120,7 @@ def check_stock_quantity(
             )
 
 
+# TODO: consider whether preorder is required
 def check_stock_and_preorder_quantity_bulk(
     variants: Iterable["ProductVariant"],
     country_code: str,
@@ -131,6 +132,8 @@ def check_stock_and_preorder_quantity_bulk(
     existing_lines: Optional[Iterable["CheckoutLineInfo"]] = None,
     replace: bool = False,
     check_reservations: bool = False,
+    rental_start = None,
+    rental_end = None,
 ):
     """Validate if products are available for stocks/preorder.
 
@@ -155,6 +158,8 @@ def check_stock_and_preorder_quantity_bulk(
             existing_lines,
             replace,
             check_reservations,
+            rental_start,
+            rental_end,
         )
     if preorder_variants:
         check_preorder_threshold_bulk(
@@ -223,6 +228,8 @@ def check_stock_quantity_bulk(
     existing_lines: Optional[Iterable["CheckoutLineInfo"]] = None,
     replace=False,
     check_reservations: bool = False,
+    rental_start = None,
+    rental_end = None
 ):
     """Validate if there is stock available for given variants in given country.
 
@@ -251,7 +258,7 @@ def check_stock_quantity_bulk(
         )
     )
 
-    all_variants_stocks = stocks.filter(**filter_lookup).annotate_available_quantity()
+    all_variants_stocks = stocks.filter(**filter_lookup).annotate_available_quantity(rental_start, rental_end)
 
     variant_stocks: Dict[int, List[Stock]] = defaultdict(list)
     for stock in all_variants_stocks:

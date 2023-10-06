@@ -47,6 +47,7 @@ else:
 
 
 CountryCode = Optional[str]
+# TODO: change below
 VariantIdCountryCodeChannelSlug = Tuple[int, CountryCode, str]
 
 
@@ -69,10 +70,23 @@ class AvailableQuantityByProductVariantIdCountryCodeAndChannelSlugLoader(
         variants_by_country_and_channel: DefaultDict[
             Tuple[CountryCode, str], List[int]
         ] = defaultdict(list)
-        for variant_id, country_code, channel_slug in keys:
+        start = []
+        end = []
+        for variant_id, country_code, channel_slug, datetime_start, datetime_end in keys:
             variants_by_country_and_channel[(country_code, channel_slug)].append(
                 variant_id
             )
+            start.append(datetime_start)
+            end.append(datetime_end)
+
+        # Check if all values in start/end are the same respectively. 
+        # TODO: support the general case where each start and end can be different
+        if start.count(start[0]) != len(start):
+            raise ValueError("Batch loading only supported for same datetime_start")
+        if end.count(end[0]) != len(end):
+            raise ValueError("Batch loading only supported for same datetime_end")
+        start = start[0]
+        end = end[0]
 
         # For each country code execute a single query for all product variants.
         quantity_by_variant_and_country: DefaultDict[
@@ -85,14 +99,14 @@ class AvailableQuantityByProductVariantIdCountryCodeAndChannelSlugLoader(
             for key, variant_ids in variants_by_country_and_channel.items():
                 country_code, channel_slug = key
                 quantities = self.batch_load_quantities_by_country(
-                    country_code, channel_slug, variant_ids, site
+                    country_code, channel_slug, variant_ids, site, start, end
                 )
                 for variant_id, quantity in quantities:
                     quantity_by_variant_and_country[
                         (variant_id, country_code, channel_slug)
                     ] = max(0, quantity)
 
-        return [quantity_by_variant_and_country[key] for key in keys]
+        return [quantity_by_variant_and_country[key[:3]] for key in keys]
 
     def batch_load_quantities_by_country(
         self,
@@ -100,6 +114,8 @@ class AvailableQuantityByProductVariantIdCountryCodeAndChannelSlugLoader(
         channel_slug: Optional[str],
         variant_ids: Iterable[int],
         site: Site,
+        datetime_start,
+        datetime_end
     ) -> Iterable[Tuple[int, int]]:
         # get stocks only for warehouses assigned to the shipping zones
         # that are available in the given channel
@@ -127,7 +143,7 @@ class AvailableQuantityByProductVariantIdCountryCodeAndChannelSlugLoader(
             | Q(warehouse_id__in=cc_warehouses.values("id"))
         )
 
-        stocks = stocks.annotate_available_quantity()
+        stocks = stocks.annotate_available_quantity(datetime_start, datetime_end)
 
         stocks_reservations = self.prepare_stocks_reservations_map(variant_ids)
 
@@ -394,10 +410,23 @@ class StocksWithAvailableQuantityByProductVariantIdCountryCodeAndChannelLoader(
         variants_by_country_and_channel: DefaultDict[
             Tuple[CountryCode, str], List[int]
         ] = defaultdict(list)
-        for variant_id, country_code, channel_slug in keys:
+        start = []
+        end = []
+        for variant_id, country_code, channel_slug, datetime_start, datetime_end in keys:
             variants_by_country_and_channel[(country_code, channel_slug)].append(
                 variant_id
             )
+            start.append(datetime_start)
+            end.append(datetime_end)
+
+        # Check if all values in start/end are the same respectively. 
+        # TODO: support the general case where each start and end can be different
+        if start.count(start[0]) != len(start):
+            raise ValueError("Batch loading only supported for same datetime_start")
+        if end.count(end[0]) != len(end):
+            raise ValueError("Batch loading only supported for same datetime_end")
+        start = start[0]
+        end = end[0]
 
         # For each country code execute a single query for all product variants.
         stocks_by_variant_and_country: DefaultDict[
@@ -406,20 +435,22 @@ class StocksWithAvailableQuantityByProductVariantIdCountryCodeAndChannelLoader(
         for key, variant_ids in variants_by_country_and_channel.items():
             country_code, channel_slug = key
             variant_ids_stocks = self.batch_load_stocks_by_country(
-                country_code, channel_slug, variant_ids
+                country_code, channel_slug, variant_ids, start, end
             )
             for variant_id, stocks in variant_ids_stocks:
                 stocks_by_variant_and_country[
                     (variant_id, country_code, channel_slug)
                 ].extend(stocks)
 
-        return [stocks_by_variant_and_country[key] for key in keys]
+        return [stocks_by_variant_and_country[key[:3]] for key in keys]
 
     def batch_load_stocks_by_country(
         self,
         country_code: Optional[CountryCode],
         channel_slug: Optional[str],
         variant_ids: Iterable[int],
+        datetime_start,
+        datetime_end
     ) -> Iterable[Tuple[int, List[Stock]]]:
         # convert to set to not return the same stocks for the same variant twice
         variant_ids_set = set(variant_ids)
@@ -448,7 +479,7 @@ class StocksWithAvailableQuantityByProductVariantIdCountryCodeAndChannelLoader(
                     ],
                 )
             )
-        stocks = stocks.annotate_available_quantity()
+        stocks = stocks.annotate_available_quantity((datetime_start, datetime_end))
 
         stocks_by_variant_id_map: DefaultDict[int, List[Stock]] = defaultdict(list)
         for stock in stocks:

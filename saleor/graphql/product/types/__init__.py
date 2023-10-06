@@ -7,6 +7,8 @@ from .digital_contents import (
 )
 from .products import (
     Product,
+    ProductColor,
+    ProductColorCountableConnection,
     ProductCountableConnection,
     ProductMedia,
     ProductType,
@@ -21,6 +23,8 @@ __all__ = [
     "Collection",
     "CollectionCountableConnection",
     "Product",
+    "ProductColor",
+    "ProductColorCountableConnection",
     "ProductCountableConnection",
     "ProductMedia",
     "ProductType",

@@ -11,6 +11,8 @@ from .....account import models, notifications, search
 from .....account.error_codes import AccountErrorCode
 from .....core.tracing import traced_atomic_transaction
 from .....core.utils.url import prepare_url, validate_storefront_url
+from .....preference import models as preference_models
+from .....product import models as product_models
 from .....webhook.event_types import WebhookEventAsyncType
 from ....channel.utils import clean_channel
 from ....core import ResolveInfo
@@ -143,6 +145,36 @@ class AccountRegister(ModelMutation):
 
         data["language_code"] = data.get("language_code", settings.LANGUAGE_CODE)
         return super().clean_input(info, instance, data, **kwargs)
+
+    @classmethod
+    def post_save_action(cls, _info, instance, _cleaned_input):
+        # TODO: check if better to put under save()
+        # TODO: check staff > customer_create
+        product_preference = preference_models.ProductPreference.objects.create(user=instance)
+
+        product_to_score = {}
+        products = product_models.Product.objects.all()
+        product_colors = preference_models.ProductColor.objects.all()
+
+        for product in products:
+            product_score = preference_models.ProductScore(
+                product_preference = product_preference,
+                product = product
+            )
+            product_to_score[product.pk] = product_score
+        preference_models.ProductScore.objects.bulk_create(
+            product_to_score.values(), batch_size=1000
+        )
+
+        product_color_scores = [
+            preference_models.ProductColorScore(
+                product_score = product_to_score[product_color.product.pk],
+                product_color = product_color
+            ) for product_color in product_colors
+        ]
+        preference_models.ProductColorScore.objects.bulk_create(
+            product_color_scores, batch_size=1000
+        )
 
     @classmethod
     def save(cls, info: ResolveInfo, user, cleaned_input):

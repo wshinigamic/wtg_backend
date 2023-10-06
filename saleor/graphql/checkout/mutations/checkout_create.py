@@ -159,6 +159,12 @@ class CheckoutCreateInput(BaseInputObjectType):
             "The checkout validation rules that can be changed." + ADDED_IN_35
         ),
     )
+    rental_start = graphene.DateTime(
+        description="Starting datetime of the rental."
+    )
+    rental_end = graphene.DateTime(
+        description="Ending datetime of the rental."
+    )
 
     class Meta:
         doc_category = DOC_CATEGORY_CHECKOUT
@@ -195,9 +201,10 @@ class CheckoutCreate(ModelMutation, I18nMixin):
             )
         ]
 
+    # TODO: check this later
     @classmethod
     def clean_checkout_lines(
-        cls, info: ResolveInfo, lines, country, channel
+        cls, info: ResolveInfo, lines, country, channel, rental_start, rental_end
     ) -> Tuple[List[product_models.ProductVariant], List["CheckoutLineData"]]:
         app = get_app_promise(info.context).get()
         site = get_site_promise(info.context).get()
@@ -234,6 +241,8 @@ class CheckoutCreate(ModelMutation, I18nMixin):
             channel.slug,
             site.settings.limit_quantity_per_checkout,
             check_reservations=is_reservation_enabled(site.settings),
+            rental_start=rental_start,
+            rental_end=rental_end
         )
         return variants, checkout_lines_data
 
@@ -315,6 +324,8 @@ class CheckoutCreate(ModelMutation, I18nMixin):
                 lines,
                 country,
                 cleaned_input["channel"],
+                cleaned_input["rental_start"],
+                cleaned_input["rental_end"],
             )
 
         # Use authenticated user's email as default email
@@ -330,6 +341,7 @@ class CheckoutCreate(ModelMutation, I18nMixin):
         cleaned_input["country"] = country
         return cleaned_input
 
+    # TODO: check if rental_start, rental_end needs to be manually saved. Should be no need.
     @classmethod
     def save(cls, info: ResolveInfo, instance: models.Checkout, cleaned_input):
         with traced_atomic_transaction():

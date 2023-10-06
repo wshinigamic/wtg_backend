@@ -10,7 +10,7 @@ from graphql import GraphQLError
 from ...core.tracing import traced_atomic_transaction
 from ...order import OrderStatus
 from ...order import models as order_models
-from ...warehouse.models import Stock
+from ...warehouse.models import Stock, StockWTimePeriod
 from ..core.enums import ProductErrorCode
 from .sorters import ProductOrderField
 
@@ -76,21 +76,34 @@ def create_stocks(
     stocks_data: List[Dict[str, str]],
     warehouses: Iterable["Warehouse"],
 ):
+    # First, create "Stock" which is essentially just (warehouse, product_variant)
+    # TODO: check if duplicated value is returned, if so, the query afterwards is not required
+    Stock.objects.bulk_create(
+        [Stock(
+            warehouse=warehouse,
+            product_variant=variant,
+        ) for warehouse in set(warehouses)],
+        ignore_conflicts=True
+    )
+    stocks = Stock.objects.filter(product_variant=variant, warehouse__in=set(warehouses))
+
+    # Then, create "StockWTimePeriod"s.
+    stocks_w_time_period = []
+    for stock_data, warehouse in zip(stocks_data, warehouses):
+        stock = stocks.get(warehouse=warehouse)
+        stocks_w_time_period.append(StockWTimePeriod(
+            stock=stock,
+            availability_start=stock_data["availability_start"],
+            availability_end=stock_data["availability_end"],
+            quantity=stock_data["quantity"]
+        ))
+
     try:
-        new_stocks = Stock.objects.bulk_create(
-            [
-                Stock(
-                    product_variant=variant,
-                    warehouse=warehouse,
-                    quantity=stock_data["quantity"],
-                )
-                for stock_data, warehouse in zip(stocks_data, warehouses)
-            ]
-        )
+        StockWTimePeriod.objects.bulk_create(stocks_w_time_period)
     except IntegrityError:
-        msg = "Stock for one of warehouses already exists for this product variant."
+        msg = "Duplicated StockWTimePeriod already exists."
         raise ValidationError(msg)
-    return new_stocks
+    return stocks
 
 
 DraftOrderLinesData = namedtuple(

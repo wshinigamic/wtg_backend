@@ -366,31 +366,11 @@ def filter_products_by_collections(qs, collection_pks):
     return qs.filter(Exists(collection_products.filter(product_id=OuterRef("pk"))))
 
 
-def filter_products_by_stock_availability(qs, stock_availability, channel_slug):
-    allocations = (
-        Allocation.objects.values("stock_id")
-        .filter(quantity_allocated__gt=0, stock_id=OuterRef("pk"))
-        .values_list(Sum("quantity_allocated"))
-    )
-    allocated_subquery = Subquery(queryset=allocations, output_field=IntegerField())
-
-    reservations = (
-        Reservation.objects.values("stock_id")
-        .filter(
-            quantity_reserved__gt=0,
-            stock_id=OuterRef("pk"),
-            reserved_until__gt=timezone.now(),
-        )
-        .values_list(Sum("quantity_reserved"))
-    )
-    reservation_subquery = Subquery(queryset=reservations, output_field=IntegerField())
-
+def filter_products_by_stock_availability(qs, stock_availability, rental_start, rental_end, channel_slug):
     stocks = (
         Stock.objects.for_channel_and_country(channel_slug)
-        .filter(
-            quantity__gt=Coalesce(allocated_subquery, 0)
-            + Coalesce(reservation_subquery, 0)
-        )
+        .annotate_available_quantity(rental_start, rental_end)
+        .filter(available_quantity__gt=0)
         .values("product_variant_id")
     )
     variants = ProductVariant.objects.filter(
@@ -561,7 +541,10 @@ def _filter_minimal_price(qs, _, value, channel_slug):
 
 def _filter_stock_availability(qs, _, value, channel_slug):
     if value:
-        qs = filter_products_by_stock_availability(qs, value, channel_slug)
+        stock_availability = value.get("availability")
+        rental_start = value.get("rental_period").get("gte")
+        rental_end = value.get("rental_period").get("lte")
+        qs = filter_products_by_stock_availability(qs, stock_availability, rental_start, rental_end, channel_slug)
     return qs
 
 
@@ -686,6 +669,11 @@ class ProductStockFilterInput(BaseInputObjectType):
         doc_category = DOC_CATEGORY_PRODUCTS
 
 
+class StockAvailabilityFilterInput(graphene.InputObjectType):
+    availability = graphene.Field(StockAvailability, required=True)
+    rental_period = graphene.Field(DateTimeRangeInput, required=True)
+
+
 class ProductFilter(MetadataFilterBase):
     is_published = django_filters.BooleanFilter(method="filter_is_published")
     published_from = ObjectTypeFilter(
@@ -693,7 +681,8 @@ class ProductFilter(MetadataFilterBase):
         method="filter_published_from",
         help_text=f"Filter by the publication date. {ADDED_IN_38}",
     )
-    is_available = django_filters.BooleanFilter(
+    is_available = ObjectTypeFilter(
+        input_class=DateTimeRangeInput,
         method="filter_is_available",
         help_text=f"Filter by availability for purchase. {ADDED_IN_38}",
     )
@@ -720,8 +709,8 @@ class ProductFilter(MetadataFilterBase):
         input_class="saleor.graphql.attribute.types.AttributeInput",
         method="filter_attributes",
     )
-    stock_availability = EnumFilter(
-        input_class=StockAvailability,
+    stock_availability = ObjectTypeFilter(
+        input_class=StockAvailabilityFilterInput,
         method="filter_stock_availability",
         help_text="Filter by variants having specific stock status.",
     )

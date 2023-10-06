@@ -7,6 +7,7 @@ from .....attribute import models as attribute_models
 from .....core.tracing import traced_atomic_transaction
 from .....core.utils.editorjs import clean_editor_js
 from .....permission.enums import ProductPermissions
+from .....preference import models as preference_models
 from .....product import models
 from .....product.error_codes import ProductErrorCode
 from .....product.search import update_product_search_vector
@@ -94,9 +95,9 @@ class StockInput(BaseInputObjectType):
     warehouse = graphene.ID(
         required=True, description="Warehouse in which stock is located."
     )
-    quantity = graphene.Int(
-        required=True, description="Quantity of items available for sell."
-    )
+    availability_start = graphene.DateTime(required=True)
+    availability_end = graphene.DateTime(required=True)
+    quantity = graphene.Int(required=True)
 
     class Meta:
         doc_category = DOC_CATEGORY_PRODUCTS
@@ -224,6 +225,15 @@ class ProductCreate(ModelMutation):
         update_products_discounted_prices_for_promotion_task.delay([instance.id])
         manager = get_plugin_manager_promise(info.context).get()
         cls.call_event(manager.product_created, product)
+
+        product_preferences = preference_models.ProductPreference.objects.all()
+        product_scores = [
+            preference_models.ProductScore(
+                product_preference = product_preference,
+                product = product
+            ) for product_preference in product_preferences
+        ]
+        preference_models.ProductScore.objects.bulk_create(product_scores, batch_size=1000)
 
     @classmethod
     def perform_mutation(cls, _root, info: ResolveInfo, /, **data):

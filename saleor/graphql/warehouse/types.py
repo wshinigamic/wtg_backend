@@ -165,6 +165,24 @@ class WarehouseCountableConnection(CountableConnection):
         node = Warehouse
 
 
+class StockWTimePeriod(ModelObjectType):
+    id = graphene.GlobalID(required=True)
+    stock = graphene.Field(lambda: Stock, required=True)
+    availability_start = graphene.DateTime(required=True)
+    availability_end = graphene.DateTime(required=True)
+    quantity = PermissionsField(
+        graphene.Int,
+        required=True,
+        permissions=[
+            ProductPermissions.MANAGE_PRODUCTS,
+            OrderPermissions.MANAGE_ORDERS,
+        ],
+    )
+
+    class Meta:
+        model = models.StockWTimePeriod
+
+
 class Stock(ModelObjectType[models.Stock]):
     id = graphene.GlobalID(required=True, description="The ID of stock.")
     warehouse = graphene.Field(
@@ -175,12 +193,29 @@ class Stock(ModelObjectType[models.Stock]):
         required=True,
         description="Information about the product variant.",
     )
+    stocks_w_time_period = PermissionsField(
+        NonNullList(StockWTimePeriod),
+        permissions=[
+            ProductPermissions.MANAGE_PRODUCTS,
+            OrderPermissions.MANAGE_ORDERS,
+        ],
+    )
     quantity = PermissionsField(
         graphene.Int,
         required=True,
         description=(
             "Quantity of a product in the warehouse's possession, including the "
             "allocated stock that is waiting for shipment."
+        ),
+        datetime_start=graphene.Argument(
+            graphene.DateTime,
+            required=True,
+            description="Start of datetime range to check stocks information."
+        ),
+        datetime_end=graphene.Argument(
+            graphene.DateTime,
+            required=True,
+            description="End of datetime range to check stocks information."
         ),
         permissions=[
             ProductPermissions.MANAGE_PRODUCTS,
@@ -212,30 +247,29 @@ class Stock(ModelObjectType[models.Stock]):
         interfaces = [graphene.relay.Node]
 
     @staticmethod
-    def resolve_quantity(root, _info: ResolveInfo):
-        return root.quantity
+    def resolve_quantity(root, _info, datetime_start, datetime_end):
+        # TODO: check if it is possible to annotate on object directly
+        return root.stocks_w_time_period.aggregate(
+            total_quantity=Coalesce(
+            Sum(
+                "quantity",
+                filter=Q(availability_start__lte=datetime_start) & Q(availability_end__gte=datetime_end)
+            ),
+            0
+            )
+        )["total_quantity"]
 
     @staticmethod
-    def resolve_quantity_allocated(root, _info: ResolveInfo):
-        return root.allocations.aggregate(
-            quantity_allocated=Coalesce(Sum("quantity_allocated"), 0)
-        )["quantity_allocated"]
+    def resolve_quantity_allocated(root, _info: ResolveInfo,  datetime_start, datetime_end):
+        return root.annotate_allocated_quantity(datetime_start, datetime_end)["allocated_quantity"]
 
     @staticmethod
     @load_site_callback
-    def resolve_quantity_reserved(root, _info: ResolveInfo, site):
+    def resolve_quantity_reserved(root, _info: ResolveInfo, site, datetime_start, datetime_end):
         if not is_reservation_enabled(site.settings):
             return 0
 
-        return root.reservations.aggregate(
-            quantity_reserved=Coalesce(
-                Sum(
-                    "quantity_reserved",
-                    filter=Q(reserved_until__gt=timezone.now()),
-                ),
-                0,
-            )
-        )["quantity_reserved"]
+        return root.annotate_reserved_quantity(datetime_start, datetime_end)["reserved_quantity"]
 
     @staticmethod
     def resolve_warehouse(root, info: ResolveInfo):
@@ -250,6 +284,10 @@ class Stock(ModelObjectType[models.Stock]):
             .load(root.product_variant_id)
             .then(lambda variant: ChannelContext(node=variant, channel_slug=None))
         )
+    
+    @staticmethod
+    def resolve_stocks_w_time_period(root, info):
+        return root.stocks_w_time_period.all()
 
 
 class StockCountableConnection(CountableConnection):

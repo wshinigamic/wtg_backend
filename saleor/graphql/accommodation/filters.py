@@ -4,6 +4,7 @@ from django.db import models
 from ..core.filters import MetadataFilterBase
 from ..core.types.filter_input import FilterInputObjectType
 
+# TODO: check if this is already available in this version of django
 class TrigramWordSimilarity(models.Func):
     function = "WORD_SIMILARITY"
     output_field = models.FloatField()

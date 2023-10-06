@@ -71,9 +71,9 @@ class ProductVariantStocksUpdate(ProductVariantStocksCreate):
 
         if stocks:
             warehouse_ids = [stock["warehouse"] for stock in stocks]
-            cls.check_for_duplicates(warehouse_ids, errors)
-            if errors:
-                raise ValidationError(errors)
+            # cls.check_for_duplicates(warehouse_ids, errors)
+            # if errors:
+            #     raise ValidationError(errors)
             warehouses = cls.get_nodes_or_error(
                 warehouse_ids, "warehouse", only_type=Warehouse
             )
@@ -91,29 +91,38 @@ class ProductVariantStocksUpdate(ProductVariantStocksCreate):
     @classmethod
     @traced_atomic_transaction()
     def update_or_create_variant_stocks(cls, variant, stocks_data, warehouses, manager):
-        stocks = []
+        stocks_w_time_period = []
         for stock_data, warehouse in zip(stocks_data, warehouses):
-            stock, is_created = warehouse_models.Stock.objects.get_or_create(
+            stock, _ = warehouse_models.Stock.objects.get_or_create(
                 product_variant=variant, warehouse=warehouse
             )
-            if is_created or (
-                (stock.quantity - stock.quantity_allocated)
-                <= 0
-                < stock_data["quantity"]
-            ):
-                transaction.on_commit(
-                    lambda: manager.product_variant_back_in_stock(stock)
-                )
+            stock_w_time_period, _ = warehouse_models.StockWTimePeriod.objects.get_or_create(
+                stock=stock, 
+                availability_start=stock_data["availability_start"],
+                availability_stop=stock_data["availability_end"],
+            )
+            stock_w_time_period.quantity = stock_data["quantity"]
+            stocks_w_time_period.append(stock_w_time_period)
 
-            if stock_data["quantity"] <= 0 or (
-                stock_data["quantity"] - stock.quantity_allocated <= 0
-            ):
-                transaction.on_commit(
-                    lambda: manager.product_variant_out_of_stock(stock)
-                )
+        warehouse_models.StockWTimePeriod.objects.bulk_update(stocks_w_time_period, ["quantity"])
 
-            stock.quantity = stock_data["quantity"]
-            stocks.append(stock)
-            transaction.on_commit(lambda: manager.product_variant_stock_updated(stock))
+            # TODO: check what the below is doing, which was called in original saleor script
+            # if is_created or (
+            #     (stock.quantity - stock.quantity_allocated)
+            #     <= 0
+            #     < stock_data["quantity"]
+            # ):
+            #     transaction.on_commit(
+            #         lambda: manager.product_variant_back_in_stock(stock)
+            #     )
 
-        warehouse_models.Stock.objects.bulk_update(stocks, ["quantity"])
+            # if stock_data["quantity"] <= 0 or (
+            #     stock_data["quantity"] - stock.quantity_allocated <= 0
+            # ):
+            #     transaction.on_commit(
+            #         lambda: manager.product_variant_out_of_stock(stock)
+            #     )
+
+            # stock.quantity = stock_data["quantity"]
+            # stocks.append(stock)
+            # transaction.on_commit(lambda: manager.product_variant_stock_updated(stock))
