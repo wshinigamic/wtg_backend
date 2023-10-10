@@ -4,7 +4,7 @@ import graphene
 from django.db.models import F, OuterRef, Subquery
 from graphene import relay
 
-from ...core.permissions import has_one_of_permissions
+from ...permission.utils import has_one_of_permissions
 from ...preference import models
 from ...product.models import ALL_PRODUCTS_PERMISSIONS
 

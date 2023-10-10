@@ -6,8 +6,8 @@ from graphene import relay
 from graphql import GraphQLError
 
 from ...accommodation import models
-from ...core.permissions import ProductPermissions
 from ...core.tracing import traced_atomic_transaction
+from ...permission.enums import ProductPermissions
 from ...product.error_codes import ProductErrorCode
 from ...thumbnail.utils import get_image_or_proxy_url, get_thumbnail_size
 from ..account.dataloaders import AddressByIdLoader

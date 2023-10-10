@@ -4,8 +4,7 @@ import pandas as pd
 from django.db.models import Exists, F, OuterRef, Subquery
 
 from ...channel.models import Channel
-from ...core.permissions import has_one_of_permissions
-from ...core.tracing import traced_resolver
+from ...permission.utils import has_one_of_permissions
 from ...preference import models
 from ...product import models as product_models
 from ...product.models import ALL_PRODUCTS_PERMISSIONS
@@ -15,11 +14,12 @@ from ..core.connection import create_connection_slice, filter_connection_queryse
 from ..core.context import get_database_connection_name
 from ..core.fields import FilterConnectionField
 from ..core.filters import GlobalIDMultipleChoiceFilter
+from ..core.tracing import traced_resolver
 from ..core.types import ChannelFilterInputObjectType
 from ..core.utils import from_global_id_or_error
 from ..core.validators import validate_one_of_args_is_in_query
 from ..product.filters import ProductFilter
-from ..product.resolvers import resolve_product_by_id, resolve_product_by_slug
+from ..product.resolvers import resolve_product
 from ..utils import get_user_or_app_from_context
 from ..utils.filters import filter_by_id
 from .mutations import ProductColorBulkPreferenceUpdate
@@ -253,15 +253,15 @@ class PreferenceQueries(graphene.ObjectType):
 
         if channel is None and not has_required_permissions:
             channel = get_default_channel_slug_or_graphql_error()
-        if id:
-            _type, id = from_global_id_or_error(id, ProductWPreference)
-            product = resolve_product_by_id(
-                info, id, channel_slug=channel, requestor=requestor
-            )
-        else:
-            product = resolve_product_by_slug(
-                info, product_slug=slug, channel_slug=channel, requestor=requestor
-            )
+        product = resolve_product(
+            info, 
+            id=id, 
+            slug=slug,
+            external_reference=None,
+            channel_slug=channel,
+            requestor=requestor
+        )
+
         return ChannelContext(node=product, channel_slug=channel) if product else None
 
 
