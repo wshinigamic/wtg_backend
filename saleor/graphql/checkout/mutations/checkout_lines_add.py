@@ -89,6 +89,8 @@ class CheckoutLinesAdd(BaseMutation):
         channel_slug,
         delivery_method_info,
         lines=None,
+        rental_start=None,
+        rental_end=None,
     ):
         variants, quantities = get_variants_and_total_quantities(
             variants, checkout_lines_data
@@ -103,6 +105,8 @@ class CheckoutLinesAdd(BaseMutation):
             delivery_method_info=delivery_method_info,
             existing_lines=lines,
             check_reservations=is_reservation_enabled(site.settings),
+            rental_start=rental_start,
+            rental_end=rental_end
         )
 
     @classmethod
@@ -123,10 +127,13 @@ class CheckoutLinesAdd(BaseMutation):
             info,
             variants,
             checkout_lines_data,
-            checkout.get_country(),
+            # checkout.get_country(),
+            None,   # TODO: don't care about the country for now since there is only 1 shipping zone. But should amend this.
             channel_slug,
             checkout_info.delivery_method_info,
             lines=lines,
+            rental_start=checkout.rental_start,
+            rental_end=checkout.rental_end
         )
 
         variants_ids_to_validate = {

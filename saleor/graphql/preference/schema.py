@@ -145,9 +145,13 @@ class PreferenceQueries(graphene.ObjectType):
 
         if "filter" in kwargs and "ids" in kwargs["filter"]:
             # follow the 'original' approach as in resolve_products
+            print("inside first loop")
             return create_connection_slice(qs, info, kwargs, ProductWPreferenceCountableConnection)
         else:
+            print("in second loop")
             #TODO: product should also have a cluster
+            import time
+            t1 = time.time()
             def softmax(x, T=1):
                 x = np.array(x)/T
                 max_x = np.max(x)
@@ -157,21 +161,29 @@ class PreferenceQueries(graphene.ObjectType):
                 return sm_x
             n = kwargs["first"]
             queryset = qs.qs
+            print("A", queryset.values_list("id", flat=True))
             product_preference = models.ProductPreference.objects.get(user=user)
             product_colors = (
                 models.ProductColor.objects
-                .filter(product_id__in=queryset.values_list("id", flat=True))
+                .filter(product_id__in=list(queryset.values_list("id", flat=True)))
                 .exclude(cluster__isnull=True)
             )
+            t2 = time.time()
+            print("pc", product_colors, t2-t1)
             clusters = list(product_colors.values_list("cluster", flat=True).distinct())
+            t3 = time.time()
+            print("c", clusters, t3-t2)
             user_scores = models.ProductColorScore.objects.filter(
                 product_score__product_preference = product_preference,
                 product_color__in = product_colors
             )
+            t4 = time.time()
+            print("us", user_scores, t4-t3)
             df = pd.DataFrame.from_records(
                 user_scores.values_list("product_color__cluster", "score", "product_color__product_id")
             )
-            print(len(df), "len(df)")
+            t5 = time.time()
+            print(len(df), "len(df)", t5-t4)
             if len(df) > 0:
                 df_groupby = df.groupby(0).agg({1: lambda x: np.mean(np.exp(x))})
                 df_groupby = df_groupby.reindex(index=clusters).reset_index()
@@ -253,15 +265,16 @@ class PreferenceQueries(graphene.ObjectType):
 
         if channel is None and not has_required_permissions:
             channel = get_default_channel_slug_or_graphql_error()
-        product = resolve_product(
-            info, 
-            id=id, 
-            slug=slug,
-            external_reference=None,
-            channel_slug=channel,
-            requestor=requestor
-        )
 
+        database_connection_name = get_database_connection_name(info.context)
+        qs = models.Product.objects.using(database_connection_name).visible_to_user(
+            requestor, channel_slug=channel
+        )
+        if id:
+            _type, id = from_global_id_or_error(id, ProductWPreference)
+            product = qs.filter(id=id).first()
+        else:
+            product = qs.filter(slug=slug).first()
         return ChannelContext(node=product, channel_slug=channel) if product else None
 
 

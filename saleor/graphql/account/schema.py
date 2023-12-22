@@ -9,7 +9,7 @@ from ..core.connection import create_connection_slice, filter_connection_queryse
 from ..core.descriptions import ADDED_IN_310
 from ..core.doc_category import DOC_CATEGORY_USERS
 from ..core.fields import BaseField, FilterConnectionField, PermissionsField
-from ..core.types import FilterInputObjectType
+from ..core.types import BaseObjectType, FilterInputObjectType
 from ..core.utils import from_global_id_or_error
 from ..core.validators import validate_one_of_args_is_in_query
 from .bulk_mutations import (
@@ -75,6 +75,7 @@ from .resolvers import (
     resolve_permission_groups,
     resolve_staff_users,
     resolve_user,
+    resolve_valid_email,
 )
 from .sorters import PermissionGroupSortingInput, UserSortingInput
 from .types import (
@@ -104,6 +105,12 @@ class StaffUserInput(FilterInputObjectType):
         doc_category = DOC_CATEGORY_USERS
         filterset_class = StaffUserFilter
 
+class ValidEmail(BaseObjectType):
+    is_valid = graphene.Boolean(required=True, description="True if email exists for a non-staff user.")
+
+    class Meta:
+        description = "Represents email validity for non-staff user."
+        doc_category = DOC_CATEGORY_USERS
 
 class AccountQueries(graphene.ObjectType):
     address_validation_rules = BaseField(
@@ -191,6 +198,11 @@ class AccountQueries(graphene.ObjectType):
         description="Look up a user by ID or email address.",
         doc_category=DOC_CATEGORY_USERS,
     )
+    valid_email = BaseField(
+        ValidEmail,
+        email=graphene.Argument(graphene.String, description="Email address to validate."),
+        description="Check if a user not staff with this email address is already registered."
+    )
 
     @staticmethod
     def resolve_address_validation_rules(
@@ -251,6 +263,11 @@ class AccountQueries(graphene.ObjectType):
     @app_promise_callback
     def resolve_address(_root, info: ResolveInfo, app, *, id):
         return resolve_address(info, id, app)
+    
+    @staticmethod
+    def resolve_valid_email(_root, info: ResolveInfo, *, email=None):
+        is_valid = resolve_valid_email(info, email)
+        return ValidEmail(is_valid=is_valid)
 
 
 class AccountMutations(graphene.ObjectType):

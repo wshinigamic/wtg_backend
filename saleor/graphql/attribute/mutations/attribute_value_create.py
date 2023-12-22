@@ -55,6 +55,7 @@ class AttributeValueCreate(AttributeMixin, ModelMutation):
 
     @classmethod
     def clean_input(cls, info: ResolveInfo, instance, data, **kwargs):
+        print("inside here")
         cleaned_input = super().clean_input(info, instance, data, **kwargs)
         if "name" in cleaned_input:
             cleaned_input["slug"] = generate_unique_slug(
@@ -67,14 +68,17 @@ class AttributeValueCreate(AttributeMixin, ModelMutation):
         is_swatch_attr = input_type == AttributeInputType.SWATCH
         errors: Dict[str, List[ValidationError]] = {}
         if not is_swatch_attr:
-            for field in cls.ONLY_SWATCH_FIELDS:
-                if cleaned_input.get(field):
-                    errors[field] = [
-                        ValidationError(
-                            f"The field {field} can be defined only for swatch attributes.",  # noqa: E501
-                            code=AttributeErrorCode.INVALID.value,
-                        )
-                    ]
+             # Temporarily skip validation if input type if FILE to allow creating of brand attribute
+            # TODO: check what's the proper way of doing it.
+            if input_type != AttributeInputType.FILE:
+                for field in cls.ONLY_SWATCH_FIELDS:
+                    if cleaned_input.get(field):
+                        errors[field] = [
+                            ValidationError(
+                                f"The field {field} can be defined only for swatch attributes.",  # noqa: E501
+                                code=AttributeErrorCode.INVALID.value,
+                            )
+                        ]
         else:
             try:
                 cls.validate_swatch_attr_value(cleaned_input)

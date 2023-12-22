@@ -178,9 +178,8 @@ class Checkout(models.Model):
 
     tax_exemption = models.BooleanField(default=False)
 
-    # TODO: consider if rental_start and end should be required
-    rental_start = models.DateTimeField(blank=True, null=True)
-    rental_end = models.DateTimeField(blank=True, null=True)
+    rental_start = models.DateTimeField()
+    rental_end = models.DateTimeField()
 
     class Meta:
         ordering = ("-last_change", "pk")

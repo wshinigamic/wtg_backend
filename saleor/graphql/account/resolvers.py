@@ -225,3 +225,12 @@ def resolve_permissions(root: models.User):
     permissions = get_user_permissions(root)
     permissions = permissions.order_by("codename")
     return format_permissions_for_display(permissions)
+
+
+@traced_resolver
+def resolve_valid_email(_info, email):
+    users = models.User.objects.filter(email=email)
+    if len(users) > 0:
+        return True
+    else:
+        return False

@@ -21,11 +21,12 @@ Scores (New app) - for each user
 -Add to cart should update scores, purchase should update scores also
 -Handle variant/product update where color changes
 -Ensure that color is always created for each variant
+-Search by stock availability needs to be much faster
 
 Product (App)
 -Product model
 -> Add Vendor field
-
+-media graphql url field not working for size != 0
 
 Collection
 -Vendor
@@ -55,7 +56,12 @@ CHECK PERMISSIONS
 Update product_preference, scores, when products are updated or removed
 
 Data Upload
--set isavailable for purchase at product channel listing
+-Set isavailable for purchase at product channel listing
+
+Category
+-Remove default category
+
+
 
 --------
 
@@ -120,6 +126,7 @@ uvicorn sp_search.main:app --port 8001 --reload
 DEBUG REACT
 react-devtools
 
+F:\Downloads\ngrok-v3-stable-windows-amd64\ngrok.exe start --config \\wsl.localhost\Ubuntu-20.04\home\gan\saleor-app-payment-stripe\ngrok.yml --all
 
 -------------------------------------------------
 Authentication
@@ -389,6 +396,24 @@ mutation UpdateCheckoutDeliveryMethod{
 
 ---------------------------------------
 
+Update email confirmation
+
+mutation UpdateSiteSettings{
+  shopSettingsUpdate(input:{
+    enableAccountConfirmationByEmail: false
+  }){
+    shop{
+      enableAccountConfirmationByEmail
+    }
+    errors{
+      field
+      message
+    }
+  }
+}
+
+--------------------------------------
+
 Steps to set up
 
 1. Create virtual environment and install dependencies
@@ -406,3 +431,5 @@ python .\manage.py migrate
 4. Create superuser
 python .\manage.py createsuperuser
 superuser@saleor.com superuser   
+
+uvicorn --reload saleor.asgi:application

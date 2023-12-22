@@ -28,27 +28,30 @@ class AttributeMixin:
 
         if values_input is None:
             return
-
-        if (
-            values_input
-            and attribute_input_type not in AttributeInputType.TYPES_WITH_CHOICES
-        ):
-            raise ValidationError(
-                {
-                    cls.ATTRIBUTE_VALUES_FIELD: ValidationError(
-                        "Values cannot be used with "
-                        f"input type {attribute_input_type}.",
-                        code=AttributeErrorCode.INVALID.value,
-                    )
-                }
-            )
+        
+        # Temporarily skip validation if input type if FILE to allow creating of brand attribute
+        # TODO: check what's the proper way of doing it.
+        if attribute_input_type != AttributeInputType.FILE:
+            if (
+                values_input
+                and attribute_input_type not in AttributeInputType.TYPES_WITH_CHOICES
+            ):
+                raise ValidationError(
+                    {
+                        cls.ATTRIBUTE_VALUES_FIELD: ValidationError(
+                            "Values cannot be used with "
+                            f"input type {attribute_input_type}.",
+                            code=AttributeErrorCode.INVALID.value,
+                        )
+                    }
+                )
 
         is_swatch_attr = attribute_input_type == AttributeInputType.SWATCH
 
         slug_list = list(attribute.values.values_list("slug", flat=True))
 
         for value_data in values_input:
-            cls._validate_value(attribute, value_data, is_swatch_attr, slug_list)
+            cls._validate_value(attribute, value_data, is_swatch_attr, slug_list, attribute_input_type)
 
         cls.check_values_are_unique(values_input, attribute)
 
@@ -59,6 +62,7 @@ class AttributeMixin:
         value_data: dict,
         is_swatch_attr: bool,
         slug_list: list,
+        attribute_input_type: str,
     ):
         """Validate the new attribute value."""
         value = value_data.get("name")
@@ -72,10 +76,11 @@ class AttributeMixin:
                 }
             )
 
-        if is_swatch_attr:
-            cls.validate_swatch_attr_value(value_data)
-        else:
-            cls.validate_non_swatch_attr_value(value_data)
+        if attribute_input_type != AttributeInputType.FILE:
+            if is_swatch_attr:
+                cls.validate_swatch_attr_value(value_data)
+            else:
+                cls.validate_non_swatch_attr_value(value_data)
 
         slug_value = prepare_unique_slug(slugify(unidecode(value)), slug_list)
         value_data["slug"] = slug_value

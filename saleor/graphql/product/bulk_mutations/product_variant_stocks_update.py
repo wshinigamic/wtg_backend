@@ -99,7 +99,7 @@ class ProductVariantStocksUpdate(ProductVariantStocksCreate):
             stock_w_time_period, _ = warehouse_models.StockWTimePeriod.objects.get_or_create(
                 stock=stock, 
                 availability_start=stock_data["availability_start"],
-                availability_stop=stock_data["availability_end"],
+                availability_end=stock_data["availability_end"],
             )
             stock_w_time_period.quantity = stock_data["quantity"]
             stocks_w_time_period.append(stock_w_time_period)

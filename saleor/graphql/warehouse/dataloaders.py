@@ -479,7 +479,7 @@ class StocksWithAvailableQuantityByProductVariantIdCountryCodeAndChannelLoader(
                     ],
                 )
             )
-        stocks = stocks.annotate_available_quantity((datetime_start, datetime_end))
+        stocks = stocks.annotate_available_quantity(datetime_start, datetime_end)
 
         stocks_by_variant_id_map: DefaultDict[int, List[Stock]] = defaultdict(list)
         for stock in stocks:

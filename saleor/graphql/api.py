@@ -71,6 +71,7 @@ class Query(
 
 
 class Mutation(
+    AccommodationMutations,
     AccountMutations,
     AppMutations,
     AttributeMutations,

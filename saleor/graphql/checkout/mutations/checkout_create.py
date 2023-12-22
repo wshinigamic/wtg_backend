@@ -160,9 +160,11 @@ class CheckoutCreateInput(BaseInputObjectType):
         ),
     )
     rental_start = graphene.DateTime(
+        required=True,
         description="Starting datetime of the rental."
     )
     rental_end = graphene.DateTime(
+        required=True,
         description="Ending datetime of the rental."
     )
 
