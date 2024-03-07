@@ -257,8 +257,10 @@ def check_stock_quantity_bulk(
             channel_slug, country_code, include_cc_warehouses
         )
     )
+    print("stocks", stocks)
 
     all_variants_stocks = stocks.filter(**filter_lookup).annotate_available_quantity(rental_start, rental_end)
+    print("all variant stocks", all_variants_stocks)
 
     variant_stocks: Dict[int, List[Stock]] = defaultdict(list)
     for stock in all_variants_stocks:
@@ -282,26 +284,34 @@ def check_stock_quantity_bulk(
 
         stocks = variant_stocks.get(variant.pk, [])
         available_quantity = sum([stock.available_quantity for stock in stocks])
+        print("avail qty", available_quantity)
         available_quantity = max(
             available_quantity - variant_reservations[variant.pk], 0
         )
+        print("variant reservations", variant_reservations[variant.pk])
+        print("avail qty", available_quantity)
+        print("global_quantity_limit", global_quantity_limit)
 
         if quantity > 0:
             _check_quantity_limits(variant, quantity, global_quantity_limit)
 
             if not stocks:
+                print("in A")
                 insufficient_stocks.append(
                     InsufficientStockData(
                         variant=variant, available_quantity=available_quantity
                     )
                 )
             elif variant.track_inventory and quantity > available_quantity:
+                print("in B")
                 insufficient_stocks.append(
                     InsufficientStockData(
                         variant=variant,
                         available_quantity=available_quantity,
                     )
                 )
+
+    print("insufficient_stocks", insufficient_stocks)
 
     if insufficient_stocks:
         raise InsufficientStock(insufficient_stocks)

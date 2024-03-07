@@ -139,6 +139,7 @@ def trigger_webhooks_async(
     :param requestor: used in subscription webhooks to generate meta data for payload.
     :param legacy_data_generator: used to generate payload for regular webhooks.
     """
+    print("in trigger_webhooks_async", data, event_type, webhooks)
     regular_webhooks, subscription_webhooks = group_webhooks_by_subscription(webhooks)
     deliveries = []
     if regular_webhooks:

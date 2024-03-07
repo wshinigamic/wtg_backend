@@ -50,6 +50,7 @@ LogIn
 Order
 -Create accommodation model. Eventually, accommodation availability should be pulled?
 -Make sure stock does not decrease on fulfilment
+-Order fulfill email notification
 
 CHECK PERMISSIONS
 
@@ -119,6 +120,7 @@ postgres:
 saleor:
 superuser@saleor.com superuser    
 customer@example.com secret
+test_email2@weartogo.app secret123
 
 In conda environment sp_search:
 uvicorn sp_search.main:app --port 8001 --reload
@@ -127,6 +129,13 @@ DEBUG REACT
 react-devtools
 
 F:\Downloads\ngrok-v3-stable-windows-amd64\ngrok.exe start --config \\wsl.localhost\Ubuntu-20.04\home\gan\saleor-app-payment-stripe\ngrok.yml --all
+
+saleor_dashboard - pnpm run dev (if npm run dev, then there is a need to build and hit graphql error)
+
+npx uri-scheme open exp://127.0.0.1:19000/--/confirmEmail?email=test_email14%40weartogo.app&token=c1vmg7-7143387c785d19b4b610b168ec028628
+adb shell am start -a android.intent.action.VIEW -d "exp://127.0.0.1:19000/--/confirmEmail?email=test_email15%40weartogo.app\&token=c2ctpe-361f0b06e0e23004782fa75713a51207"
+Need to add "\" before the "&" in the url when testing in adb
+
 
 -------------------------------------------------
 Authentication
@@ -166,6 +175,32 @@ mutation {
 }
 
 --------------------------------
+
+Need to set the below, otherwise update shipping address is blocked when checkout is empty
+
+mutation UpdateChannel{
+  channelUpdate(
+    id: "Q2hhbm5lbDox",
+    input: {
+      checkoutSettings:{
+        useLegacyErrorFlow: false
+      }
+    }
+  ){
+    channel{
+      id
+      name
+      checkoutSettings{
+        useLegacyErrorFlow
+      }
+    }
+    errors{
+      field
+      message
+    }
+  }
+}
+
 
 mutation CreateShippingZone{
   shippingZoneCreate(
@@ -324,6 +359,7 @@ mutation UpdateShippingMethodChannelList{
   }
 }
 
+# go to saleor_dashboard and update shipping zone to all countries (for now)
 # need to get the id again because shipping method id somehow changes
 
 query GetShippingZones{
@@ -414,6 +450,39 @@ mutation UpdateSiteSettings{
 
 --------------------------------------
 
+Update order status using metadata
+
+mutation UpdateOrderMetaData{
+  updateMetadata(
+    id:"T3JkZXI6MDQ5NzgwNGEtMzI5Ny00MDFkLThlOTAtYTk4YmFkOTJlYmNj",
+    input:[
+      {
+        key:"statusDetails",
+        value:"Sentence to be displayed."
+      }
+    ],
+  ){
+    item{
+      __typename
+      metadata{
+        key
+        value
+      }
+    }
+  }
+}
+
+--------------------------------------
+
+order.status
+UNFULFILLED > FULFILLED > RETURNED
+order.metadata.statusDetails
+order.metadata.returnInstructions
+
+
+--------------------------------------
+
+
 Steps to set up
 
 1. Create virtual environment and install dependencies
@@ -433,3 +502,13 @@ python .\manage.py createsuperuser
 superuser@saleor.com superuser   
 
 uvicorn --reload saleor.asgi:application
+
+
+
+--------------------
+
+
+App installation
+Install stripe through graphql playground and python manage.py runserver
+Afterwards, run server with uvicorn and configure through saleor_dashboard
+

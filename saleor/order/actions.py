@@ -961,7 +961,8 @@ def create_fulfillments(
                     order.channel.slug,
                     gift_card_lines_info,
                     manager,
-                    decrease_stock=approved,
+                    # decrease_stock=approved,
+                    decrease_stock=False,   # Don't decrease stock since we are just renting out
                     allow_stock_to_be_exceeded=allow_stock_to_be_exceeded,
                 )
             )

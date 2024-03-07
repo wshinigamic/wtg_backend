@@ -30,6 +30,7 @@ from .mutations import (
     CheckoutLinesDelete,
     CheckoutLinesUpdate,
     CheckoutRemovePromoCode,
+    CheckoutRentalDatesUpdate,
     CheckoutShippingAddressUpdate,
     CheckoutShippingMethodUpdate,
     OrderCreateFromCheckout,
@@ -124,6 +125,7 @@ class CheckoutMutations(graphene.ObjectType):
     checkout_lines_add = CheckoutLinesAdd.Field()
     checkout_lines_update = CheckoutLinesUpdate.Field()
     checkout_remove_promo_code = CheckoutRemovePromoCode.Field()
+    checkout_rental_dates_update = CheckoutRentalDatesUpdate.Field()
     checkout_payment_create = CheckoutPaymentCreate.Field()
     checkout_shipping_address_update = CheckoutShippingAddressUpdate.Field()
     checkout_shipping_method_update = CheckoutShippingMethodUpdate.Field(

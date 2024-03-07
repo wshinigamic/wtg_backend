@@ -229,7 +229,7 @@ def resolve_permissions(root: models.User):
 
 @traced_resolver
 def resolve_valid_email(_info, email):
-    users = models.User.objects.filter(email=email)
+    users = models.User.objects.filter(email__iexact=email)
     if len(users) > 0:
         return True
     else:

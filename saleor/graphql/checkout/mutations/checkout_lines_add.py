@@ -127,8 +127,8 @@ class CheckoutLinesAdd(BaseMutation):
             info,
             variants,
             checkout_lines_data,
-            # checkout.get_country(),
-            None,   # TODO: don't care about the country for now since there is only 1 shipping zone. But should amend this.
+            checkout.get_country(),
+            # None,   # TODO: don't care about the country for now since there is only 1 shipping zone. But should amend this.
             channel_slug,
             checkout_info.delivery_method_info,
             lines=lines,

@@ -129,6 +129,7 @@ class CheckoutShippingAddressUpdate(AddressMetadataMixin, BaseMutation, I18nMixi
         token=None,
         id=None,
     ):
+        print("in A")
         checkout = get_checkout(
             cls,
             info,
@@ -146,6 +147,7 @@ class CheckoutShippingAddressUpdate(AddressMetadataMixin, BaseMutation, I18nMixi
         lines, _ = fetch_checkout_lines(
             checkout,
         )
+        print("in B")
 
         if use_legacy_error_flow_for_checkout and not is_shipping_required(lines):
             raise ValidationError(
@@ -156,6 +158,8 @@ class CheckoutShippingAddressUpdate(AddressMetadataMixin, BaseMutation, I18nMixi
                     )
                 }
             )
+        print("in C")
+        
         address_validation_rules = validation_rules or {}
         shipping_address_instance = cls.validate_address(
             shipping_address,
@@ -168,14 +172,18 @@ class CheckoutShippingAddressUpdate(AddressMetadataMixin, BaseMutation, I18nMixi
                 "enable_fields_normalization", True
             ),
         )
+        print("in D")
+
         manager = get_plugin_manager_promise(info.context).get()
         shipping_channel_listings = checkout.channel.shipping_method_listings.all()
         checkout_info = fetch_checkout_info(
             checkout, lines, manager, shipping_channel_listings
         )
+        print("in E")
 
         country = shipping_address_instance.country.code
         checkout.set_country(country, commit=True)
+        print("in F")
 
         # Resolve and process the lines, validating variants quantities
         if lines and use_legacy_error_flow_for_checkout:
@@ -188,6 +196,7 @@ class CheckoutShippingAddressUpdate(AddressMetadataMixin, BaseMutation, I18nMixi
             )
 
         update_checkout_shipping_method_if_invalid(checkout_info, lines)
+        print("in G")
 
         shipping_address_updated_fields = []
         with traced_atomic_transaction():
@@ -206,6 +215,7 @@ class CheckoutShippingAddressUpdate(AddressMetadataMixin, BaseMutation, I18nMixi
             update_fields=shipping_address_updated_fields
             + invalidate_prices_updated_fields
         )
+        print("in H")
 
         cls.call_event(manager.checkout_updated, checkout)
 

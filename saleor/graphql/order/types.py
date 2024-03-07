@@ -935,6 +935,13 @@ class OrderLine(ModelObjectType[models.OrderLine]):
     @traced_resolver
     def resolve_variant(root: models.OrderLine, info):
         context = info.context
+        # TODO: check if there is a better way to do this
+        # TODO: also make it such that both rental_start and _end should be provided together
+        if "rental_start" not in info.variable_values:
+            info.variable_values["rental_start"] = root.order.rental_start
+        if "rental_end" not in info.variable_values:
+            info.variable_values["rental_end"] = root.order.rental_end
+
         if not root.variant_id:
             return None
 
@@ -1026,6 +1033,8 @@ class Order(ModelObjectType[models.Order]):
             f"{AuthorizationFilters.OWNER.name}."
         ),
     )
+    rental_start = graphene.DateTime()
+    rental_end = graphene.DateTime()
     shipping_method_name = graphene.String()
     collection_point_name = graphene.String()
     channel = graphene.Field(Channel, required=True)

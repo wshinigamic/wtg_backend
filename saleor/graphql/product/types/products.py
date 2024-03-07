@@ -374,12 +374,12 @@ class ProductVariant(ChannelContextTypeWithMetadata[models.ProductVariant]):
         ),
         datetime_start=graphene.Argument(
             graphene.DateTime,
-            required=True,
+            required=False,
             description="Start of datetime range to check stocks information."
         ),
         datetime_end=graphene.Argument(
             graphene.DateTime,
-            required=True,
+            required=False,
             description="End of datetime range to check stocks information."
         ),
         permissions=[
@@ -408,12 +408,12 @@ class ProductVariant(ChannelContextTypeWithMetadata[models.ProductVariant]):
         ),
         datetime_start=graphene.Argument(
             graphene.DateTime,
-            required=True,
+            # required=True,
             description="Start of datetime range to check stocks information."
         ),
         datetime_end=graphene.Argument(
             graphene.DateTime,
-            required=True,
+            # required=True,
             description="End of datetime range to check stocks information."
         ),
     )
@@ -466,6 +466,8 @@ class ProductVariant(ChannelContextTypeWithMetadata[models.ProductVariant]):
             info.context
         ).load((root.node.id, country_code, root.channel_slug, datetime_start, datetime_end))
 
+    # TODO: when querying from checkout, should use checkout.rental_start and checkout.rental_end,
+    # so datetime_start and _end should be optional
     @staticmethod
     @load_site_callback
     def resolve_quantity_available(
@@ -482,6 +484,12 @@ class ProductVariant(ChannelContextTypeWithMetadata[models.ProductVariant]):
             country_code = address.country
         channel_slug = str(root.channel_slug) if root.channel_slug else None
         global_quantity_limit_per_checkout = site.settings.limit_quantity_per_checkout
+
+        # TODO: datetime_start and _end should be +- few days from rental_start/_end, possibly through site settings?
+        if datetime_start is None:
+            datetime_start = info.variable_values.get("rental_start") or info.variable_values.get("datetime_start")
+        if datetime_end is None:
+            datetime_end = info.variable_values.get("rental_end") or info.variable_values.get("datetime_end")
 
         if root.node.is_preorder_active():
             # TODO: check if datetime_start/ datetime_end is needed here

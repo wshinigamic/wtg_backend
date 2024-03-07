@@ -205,11 +205,9 @@ class ProductVariantCreate(ModelMutation):
                 }
             )
 
-        # Don't need to check for warehouse ID duplicates since that is now allowed.
-        # TODO: consider if need to check for availability_start/end duplicate
-        # stocks = cleaned_input.get("stocks")
-        # if stocks:
-        #     cls.check_for_duplicates_in_stocks(stocks)
+        stocks = cleaned_input.get("stocks")
+        if stocks:
+            cls.check_for_duplicates_in_stocks(stocks)
 
         if instance.pk:
             # If the variant is getting updated,

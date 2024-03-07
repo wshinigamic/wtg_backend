@@ -75,26 +75,25 @@ class ProductVariantStocksCreate(BaseMutation):
 
     @classmethod
     def clean_stocks_input(cls, variant, stocks_data, errors):
-        # TODO: see if possible to raise error earlier based on duplicated StockWTimePeriod data.
         warehouse_ids = [stock["warehouse"] for stock in stocks_data]
         cls.check_for_duplicates(warehouse_ids, errors)
         warehouses = cls.get_nodes_or_error(
             warehouse_ids, "warehouse", only_type=Warehouse
         )
-        # TODO: check why need to comment out the below
-        # existing_stocks = variant.stocks.filter(warehouse__in=warehouses).values_list(
-        #     "warehouse__pk", flat=True
-        # )
-        # error_msg = "Stock for this warehouse already exists for this product variant."
-        # indexes = []
-        # for warehouse_pk in existing_stocks:
-        #     warehouse_id = graphene.Node.to_global_id("Warehouse", warehouse_pk)
-        #     indexes.extend(
-        #         [i for i, id in enumerate(warehouse_ids) if id == warehouse_id]
-        #     )
-        # cls.update_errors(
-        #     errors, error_msg, "warehouse", StockErrorCode.UNIQUE, indexes
-        # )
+        # Note: try commenting out all the below if error faced.
+        existing_stocks = variant.stocks.filter(warehouse__in=warehouses).values_list(
+            "warehouse__pk", flat=True
+        )
+        error_msg = "Stock for this warehouse already exists for this product variant."
+        indexes = []
+        for warehouse_pk in existing_stocks:
+            warehouse_id = graphene.Node.to_global_id("Warehouse", warehouse_pk)
+            indexes.extend(
+                [i for i, id in enumerate(warehouse_ids) if id == warehouse_id]
+            )
+        cls.update_errors(
+            errors, error_msg, "warehouse", StockErrorCode.UNIQUE, indexes
+        )
 
         return warehouses
 

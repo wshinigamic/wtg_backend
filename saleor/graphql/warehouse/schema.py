@@ -14,10 +14,7 @@ from ..core.fields import FilterConnectionField, PermissionsField
 from ..core.utils import from_global_id_or_error
 from ..core.utils.resolvers import resolve_by_global_id_or_ext_ref
 from .bulk_mutations import StockBulkUpdate
-from .filters import (
-    # StockFilterInput,
-    WarehouseFilterInput
-)
+from .filters import (StockFilterInput, WarehouseFilterInput)
 from .mutations import (
     WarehouseCreate,
     WarehouseDelete,
@@ -83,7 +80,6 @@ class WarehouseMutations(graphene.ObjectType):
     assign_warehouse_shipping_zone = WarehouseShippingZoneAssign.Field()
     unassign_warehouse_shipping_zone = WarehouseShippingZoneUnassign.Field()
 
-# TODO: consider whether to allow filtering
 class StockQueries(graphene.ObjectType):
     stock = PermissionsField(
         Stock,
@@ -95,7 +91,7 @@ class StockQueries(graphene.ObjectType):
     stocks = FilterConnectionField(
         StockCountableConnection,
         description="List of stocks.",
-        # filter=StockFilterInput(),
+        filter=StockFilterInput(),
         permissions=[ProductPermissions.MANAGE_PRODUCTS],
         doc_category=DOC_CATEGORY_PRODUCTS,
     )

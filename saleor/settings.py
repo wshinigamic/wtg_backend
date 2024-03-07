@@ -128,6 +128,7 @@ USE_TZ = True
 FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
 EMAIL_URL = os.environ.get("EMAIL_URL")
+# EMAIL_URL = "smtp://AKIA47CR2IRE3CW2ZJZD:BJbEDvi8eoErIIg4IZmAeVxKCXKjt7CX5qbrq9Z1l5Cf@email-smtp.ap-southeast-2.amazonaws.com:587/?tls=True"
 SENDGRID_USERNAME = os.environ.get("SENDGRID_USERNAME")
 SENDGRID_PASSWORD = os.environ.get("SENDGRID_PASSWORD")
 if not EMAIL_URL and SENDGRID_USERNAME and SENDGRID_PASSWORD:
@@ -148,11 +149,13 @@ EMAIL_USE_TLS: bool = email_config.get("EMAIL_USE_TLS", False)
 EMAIL_USE_SSL: bool = email_config.get("EMAIL_USE_SSL", False)
 
 ENABLE_SSL: bool = get_bool_from_env("ENABLE_SSL", False)
+# ENABLE_SSL: bool = get_bool_from_env("ENABLE_SSL", True)
 
 # URL on which Saleor is hosted (e.g., https://api.example.com/). This has precedence
 # over ENABLE_SSL and Shop.domain when generating URLs pointing to itself.
 PUBLIC_URL: Optional[str] = get_url_from_env("PUBLIC_URL", schemes=["http", "https"])
-# PUBLIC_URL = "https://wtg-backend.ngrok.app"
+# TODO: Set env var instead
+PUBLIC_URL = "https://wtg-backend.ngrok.app"
 if PUBLIC_URL:
     if os.environ.get("ENABLE_SSL") is not None:
         warnings.warn("ENABLE_SSL is ignored on URL generation if PUBLIC_URL is set.")
@@ -855,8 +858,9 @@ RESET_PASSWORD_LOCK_TIME = parse(
 )
 
 # Lock time for request confirmation email mutation per user
+# TODO: set 1 minute?
 CONFIRMATION_EMAIL_LOCK_TIME = parse(
-    os.environ.get("CONFIRMATION_EMAIL_LOCK_TIME", "15 minutes")
+    os.environ.get("CONFIRMATION_EMAIL_LOCK_TIME", "15 seconds")
 )
 
 # Time threshold to update user last_login when performing requests with OAUTH token.

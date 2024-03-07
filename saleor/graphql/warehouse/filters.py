@@ -107,15 +107,15 @@ class WarehouseFilterInput(FilterInputObjectType):
         filterset_class = WarehouseFilter
 
 
-# class StockFilter(django_filters.FilterSet):
-#     search = django_filters.CharFilter(method=filter_search_stock)
+class StockFilter(django_filters.FilterSet):
+    search = django_filters.CharFilter(method=filter_search_stock)
 
-#     class Meta:
-#         model = Stock
-#         fields = ["quantity"]
+    class Meta:
+        model = Stock
+        fields = ["quantity"]
 
 
-# class StockFilterInput(FilterInputObjectType):
-#     class Meta:
-#         doc_category = DOC_CATEGORY_PRODUCTS
-#         filterset_class = StockFilter
+class StockFilterInput(FilterInputObjectType):
+    class Meta:
+        doc_category = DOC_CATEGORY_PRODUCTS
+        filterset_class = StockFilter

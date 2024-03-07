@@ -261,6 +261,12 @@ class CheckoutLine(ModelObjectType[models.CheckoutLine]):
 
     @staticmethod
     def resolve_variant(root: models.CheckoutLine, info: ResolveInfo):
+        # TODO: check if there is a better way to do this
+        if "rental_start" not in info.variable_values:
+            info.variable_values["rental_start"] = root.checkout.rental_start
+        if "rental_end" not in info.variable_values:
+            info.variable_values["rental_end"] = root.checkout.rental_end
+
         variant = ProductVariantByIdLoader(info.context).load(root.variant_id)
         channel = ChannelByCheckoutLineIDLoader(info.context).load(root.id)
 
@@ -499,6 +505,8 @@ class Checkout(ModelObjectType[models.Checkout]):
         "saleor.graphql.account.types.Address",
         description="The shipping address of the checkout.",
     )
+    rental_start = graphene.DateTime()
+    rental_end = graphene.DateTime()
     note = graphene.String(required=True, description="The note for the checkout.")
     discount = graphene.Field(
         Money,

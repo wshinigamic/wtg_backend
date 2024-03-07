@@ -668,6 +668,8 @@ class CheckoutLinesProblemsByCheckoutIdLoader(
                     VARIANT_ID,
                     CHANNEL_SLUG,
                     COUNTRY_CODE,
+                    any,
+                    any
                 ]
             ] = set()
             product_data_set: set[
@@ -687,6 +689,8 @@ class CheckoutLinesProblemsByCheckoutIdLoader(
                             line.variant.id,
                             line.channel.slug,
                             checkout_infos_map[line.line.checkout_id].checkout.country,
+                            checkout_infos_map[line.line.checkout_id].checkout.rental_start,
+                            checkout_infos_map[line.line.checkout_id].checkout.rental_end,
                         )
                     )
                     product_data_set.add(
@@ -708,6 +712,8 @@ class CheckoutLinesProblemsByCheckoutIdLoader(
                         VARIANT_ID,
                         CHANNEL_SLUG,
                         COUNTRY_CODE,
+                        any,
+                        any
                     ],
                     Iterable[Stock],
                 ] = dict(zip(variant_data_list, variant_stocks))
@@ -733,8 +739,8 @@ class CheckoutLinesProblemsByCheckoutIdLoader(
 
             variant_stocks = stock_dataloader.load_many(
                 [
-                    (variant_id, country_code, channel_slug)
-                    for variant_id, channel_slug, country_code in variant_data_list
+                    (variant_id, country_code, channel_slug, rental_start, rental_end)
+                    for variant_id, channel_slug, country_code, rental_start, rental_end in variant_data_list
                 ]
             )
             product_channel_listings = (

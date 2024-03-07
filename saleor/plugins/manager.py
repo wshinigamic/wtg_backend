@@ -216,11 +216,13 @@ class PluginsManager(PaymentInterface):
         will return previous_value.
         """
         plugin_method = getattr(plugin, method_name, NotImplemented)
+        print("in __run_method_on_single_plugin", method_name, plugin_method, type(plugin_method))
         if plugin_method == NotImplemented:
             return previous_value
         returned_value = plugin_method(
             *args, **kwargs, previous_value=previous_value
         )  # type:ignore
+        print("returned_value", returned_value)
         if returned_value == NotImplemented:
             return previous_value
         return returned_value

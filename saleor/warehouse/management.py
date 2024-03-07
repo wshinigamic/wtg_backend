@@ -134,26 +134,35 @@ def allocate_stocks(
         )
         allocations.extend(allocation_items)
 
+    print("allocations", allocations)
+
+    print("in allocate_stocks", insufficient_stock)
+
     if insufficient_stock:
         raise InsufficientStock(insufficient_stock)
 
     if allocations:
-        stocks_to_update = []
-        for alloc in Allocation.objects.bulk_create(allocations):
-            stock = alloc.stock
-            stock.quantity_allocated = (
-                F("quantity_allocated") + alloc.quantity_allocated
-            )
-            stocks_to_update.append(stock)
-        Stock.objects.bulk_update(stocks_to_update, ["quantity_allocated"])
+        Allocation.objects.bulk_create(allocations)
+        # Quantity allocated is dependent on date range now, and field has been removed
+        # stocks_to_update = []
+        # for alloc in Allocation.objects.bulk_create(allocations):
+        #     stock = alloc.stock
+        #     stock.quantity_allocated = (
+        #         F("quantity_allocated") + alloc.quantity_allocated
+        #     )
+        #     stocks_to_update.append(stock)
+        # Stock.objects.bulk_update(stocks_to_update, ["quantity_allocated"])
 
         for allocation in allocations:
+            print("allocation", allocation, allocation.order_line, allocation.stock, allocation.quantity_allocated)
             allocated_stock = (
                 Allocation.objects.filter(stock_id=allocation.stock_id).aggregate(
                     Sum("quantity_allocated")
                 )["quantity_allocated__sum"]
                 or 0
             )
+            print("allocated_stock", allocated_stock)
+
             if not max(allocation.stock.quantity - allocated_stock, 0):
                 transaction.on_commit(
                     lambda: manager.product_variant_out_of_stock(allocation.stock)

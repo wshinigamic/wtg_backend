@@ -15,6 +15,8 @@ class OrderSortField(BaseEnum):
     CUSTOMER = ["billing_address__last_name", "billing_address__first_name", "pk"]
     PAYMENT = ["last_charge_status", "status", "pk"]
     FULFILLMENT_STATUS = ["status", "user_email", "pk"]
+    RENTAL_START = ["rental_start", "pk"]
+    RENTAL_END = ["rental_end", "pk"]
 
     class Meta:
         doc_category = DOC_CATEGORY_ORDERS

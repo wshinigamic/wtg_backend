@@ -230,6 +230,7 @@ class Warehouse(ModelWithMetadata, ModelWithExternalReference):
         address.delete()
 
 
+
 class StockQuerySet(models.QuerySet):
     def annotate_reserved_quantity(self, datetime_start, datetime_end):
         return self.annotate(
@@ -238,10 +239,10 @@ class StockQuerySet(models.QuerySet):
                     "reservations__quantity_reserved",
                     filter=(
                         Q(reservations__reserved_until__gt=timezone.now()) &
-                        (Q(reservations_checkout_line__checkout__rental_start__gte=datetime_start) &
-                        Q(reservations_checkout_line__checkout__rental_start__lte=datetime_end)) |
-                        (Q(reservations_checkout_line__checkout__rental_end__gte=datetime_start) &
-                        Q(reservations_checkout_line__checkout__rental_end__lte=datetime_end))
+                        (Q(reservations__checkout_line__checkout__rental_start__gte=datetime_start) &
+                        Q(reservations__checkout_line__checkout__rental_start__lte=datetime_end)) |
+                        (Q(reservations__checkout_line__checkout__rental_end__gte=datetime_start) &
+                        Q(reservations__checkout_line__checkout__rental_end__lte=datetime_end))
                     ),
                 ),
                 0,
@@ -264,39 +265,31 @@ class StockQuerySet(models.QuerySet):
             )
         )
 
-    def annotate_total_quantity(self, datetime_start, datetime_end):
-        return self.annotate(
-            total_quantity=Coalesce(
-                Sum(
-                    "stocks_w_time_period__quantity",
-                    filter=Q(stocks_w_time_period__availability_start__lte=datetime_start) & Q(stocks_w_time_period__availability_end__gte=datetime_end)
-                ),
-                0
-            )
-        )
-
     def annotate_available_quantity(self, datetime_start, datetime_end):
-        return self.annotate_total_quantity(
-            datetime_start, datetime_end
-        ).annotate_allocated_quantity(
+        return self.annotate_allocated_quantity(
             datetime_start, datetime_end
         ).annotate(
-            available_quantity=F("total_quantity") - F("allocated_quantity")
+            available_quantity=F("quantity") - F("allocated_quantity")
         )
     
     def for_channel_and_click_and_collect(self, channel_slug: str):
         """Return the stocks for a given channel for a click and collect.
+
         The click and collect warehouses don't have to be assigned to the shipping zones
         so all stocks for a given channel are returned.
         """
         WarehouseChannel = Channel.warehouses.through  # type: ignore
+
         channels = Channel.objects.filter(slug=channel_slug).values("pk")
+
         warehouse_channels = WarehouseChannel.objects.filter(
             Exists(channels.filter(pk=OuterRef("channel_id")))
         ).values("warehouse_id")
+
         return self.select_related("product_variant").filter(
             Exists(warehouse_channels.filter(warehouse_id=OuterRef("warehouse_id")))
         )
+    
     def for_channel_and_country(
         self,
         channel_slug: str,
@@ -304,6 +297,7 @@ class StockQuerySet(models.QuerySet):
         include_cc_warehouses: bool = False,
     ):
         """Get stocks for given channel and country_code.
+
         The returned stocks, must be in warehouse that is available in provided channel
         and in the shipping zone that is available in the given channel and country.
         When the country_code is not provided or include_cc_warehouses is set to True,
@@ -313,13 +307,16 @@ class StockQuerySet(models.QuerySet):
         ShippingZoneChannel = Channel.shipping_zones.through  # type: ignore
         WarehouseShippingZone = ShippingZone.warehouses.through  # type: ignore
         WarehouseChannel = Channel.warehouses.through  # type: ignore
+
         channels = Channel.objects.filter(slug=channel_slug).values("pk")
+
         shipping_zone_channels = ShippingZoneChannel.objects.filter(
             Exists(channels.filter(pk=OuterRef("channel_id")))
         )
         warehouse_channels = WarehouseChannel.objects.filter(
             Exists(channels.filter(pk=OuterRef("channel_id")))
         ).values("warehouse_id")
+
         cc_warehouses = Warehouse.objects.none()
         if country_code:
             shipping_zones = ShippingZone.objects.filter(
@@ -338,7 +335,9 @@ class StockQuerySet(models.QuerySet):
                     WarehouseClickAndCollectOption.ALL_WAREHOUSES,
                 ],
             )
+
         shipping_zone_channels.values("shippingzone_id")
+
         warehouse_shipping_zones = WarehouseShippingZone.objects.filter(
             Exists(
                 shipping_zone_channels.filter(
@@ -353,15 +352,18 @@ class StockQuerySet(models.QuerySet):
             )
             | Exists(cc_warehouses.filter(id=OuterRef("warehouse_id")))
         )
+    
     def get_variant_stocks_for_country(
         self, country_code: str, channel_slug: str, product_variant: ProductVariant
     ):
         """Return the stock information about the a stock for a given country.
+
         Note it will raise a 'Stock.DoesNotExist' exception if no such stock is found.
         """
         return self.for_channel_and_country(channel_slug, country_code).filter(
             product_variant=product_variant
         )
+    
     def get_variants_stocks_for_country(
         self,
         country_code: str,
@@ -369,11 +371,13 @@ class StockQuerySet(models.QuerySet):
         products_variants: Iterable[ProductVariant],
     ):
         """Return the stock information about the a stock for a given country.
+
         Note it will raise a 'Stock.DoesNotExist' exception if no such stock is found.
         """
         return self.for_channel_and_country(channel_slug, country_code).filter(
             product_variant__in=products_variants
         )
+    
     def get_product_stocks_for_country_and_channel(
         self, country_code: str, channel_slug: str, product: Product
     ):
@@ -387,24 +391,27 @@ class Stock(models.Model):
     product_variant = models.ForeignKey(
         ProductVariant, null=False, on_delete=models.CASCADE, related_name="stocks"
     )
+    quantity = models.IntegerField(default=0)
 
     objects = models.Manager.from_queryset(StockQuerySet)()
 
     class Meta:
         unique_together = [["warehouse", "product_variant"]]
+        ordering = ("pk",)
+
+    def increase_stock(self, quantity: int, commit: bool = True):
+        """Return given quantity of product to a stock."""
+        self.quantity = F("quantity") + quantity
+        if commit:
+            self.save(update_fields=["quantity"])
+
+    def decrease_stock(self, quantity: int, commit: bool = True):
+        self.quantity = F("quantity") - quantity
+        if commit:
+            self.save(update_fields=["quantity"])
 
 
-class StockWTimePeriod(models.Model):
-    stock = models.ForeignKey(Stock, null=False, on_delete=models.CASCADE, related_name="stocks_w_time_period")
-    availability_start = models.DateTimeField(null=False)
-    availability_end = models.DateTimeField(null=False)
-    quantity = models.IntegerField(default=0)
-
-    class Meta:
-        unique_together = [["stock", "availability_start", "availability_end"]]
-
-
-# TODO: see if this class is required
+# TODO: surely need to edit the below
 class AllocationQueryset(models.QuerySet["Allocation"]):
     def annotate_stock_available_quantity(self):
         return self.annotate(

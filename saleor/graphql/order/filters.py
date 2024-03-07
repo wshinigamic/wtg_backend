@@ -173,6 +173,12 @@ def filter_by_order_number(qs, _, values):
     return qs.filter(number__in=values)
 
 
+def filter_by_active_order(qs, _, value):
+    if value:
+        return qs.filter(rental_end__gte=timezone.now())
+    return qs.filter(rental_end__lt=timezone.now())
+
+
 class DraftOrderFilter(MetadataFilterBase):
     customer = django_filters.CharFilter(method=filter_customer)
     created = ObjectTypeFilter(input_class=DateRangeInput, method=filter_created_range)
@@ -213,6 +219,7 @@ class OrderFilter(DraftOrderFilter):
         input_class=graphene.String, method=filter_by_order_number
     )
     checkout_ids = GlobalIDMultipleChoiceFilter(method=filter_checkouts)
+    active = django_filters.BooleanFilter(method=filter_by_active_order)
 
     class Meta:
         model = Order

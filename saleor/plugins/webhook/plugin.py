@@ -1747,9 +1747,11 @@ class WebhookPlugin(BasePlugin):
     def notify(
         self, event: Union[NotifyEventType, str], payload: dict, previous_value
     ) -> Any:
+        print("in notify")
         if not self.active:
             return previous_value
         event_type = WebhookEventAsyncType.NOTIFY_USER
+        print("event_type", event_type, get_webhooks_for_event(event_type))
         if webhooks := get_webhooks_for_event(event_type):
             data = self._serialize_payload(
                 {

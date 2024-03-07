@@ -71,9 +71,9 @@ class ProductVariantStocksUpdate(ProductVariantStocksCreate):
 
         if stocks:
             warehouse_ids = [stock["warehouse"] for stock in stocks]
-            # cls.check_for_duplicates(warehouse_ids, errors)
-            # if errors:
-            #     raise ValidationError(errors)
+            cls.check_for_duplicates(warehouse_ids, errors)
+            if errors:
+                raise ValidationError(errors)
             warehouses = cls.get_nodes_or_error(
                 warehouse_ids, "warehouse", only_type=Warehouse
             )
@@ -91,22 +91,13 @@ class ProductVariantStocksUpdate(ProductVariantStocksCreate):
     @classmethod
     @traced_atomic_transaction()
     def update_or_create_variant_stocks(cls, variant, stocks_data, warehouses, manager):
-        stocks_w_time_period = []
+        stocks = []
         for stock_data, warehouse in zip(stocks_data, warehouses):
-            stock, _ = warehouse_models.Stock.objects.get_or_create(
+            stock, is_created = warehouse_models.Stock.objects.get_or_create(
                 product_variant=variant, warehouse=warehouse
             )
-            stock_w_time_period, _ = warehouse_models.StockWTimePeriod.objects.get_or_create(
-                stock=stock, 
-                availability_start=stock_data["availability_start"],
-                availability_end=stock_data["availability_end"],
-            )
-            stock_w_time_period.quantity = stock_data["quantity"]
-            stocks_w_time_period.append(stock_w_time_period)
 
-        warehouse_models.StockWTimePeriod.objects.bulk_update(stocks_w_time_period, ["quantity"])
-
-            # TODO: check what the below is doing, which was called in original saleor script
+            #TODO: check what the below is doing, which was called in original saleor script
             # if is_created or (
             #     (stock.quantity - stock.quantity_allocated)
             #     <= 0

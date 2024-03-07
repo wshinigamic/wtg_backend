@@ -139,6 +139,9 @@ def _process_shipping_data_for_order(
     """Fetch, process and return shipping data from checkout."""
     delivery_method_info = checkout_info.delivery_method_info
     shipping_address = delivery_method_info.shipping_address
+    print("delivery_method_info", delivery_method_info)
+    print("shipping_address", shipping_address)
+    print("checkout_info shipping address", checkout_info.shipping_address)
 
     if (
         delivery_method_info.store_as_customer_address
@@ -154,8 +157,10 @@ def _process_shipping_data_for_order(
     shipping_method = delivery_method_info.delivery_method
     tax_class = getattr(shipping_method, "tax_class", None)
 
+    # TODO: check what is the "correct" way to set the shipping address
     result: Dict[str, Any] = {
-        "shipping_address": shipping_address,
+        # "shipping_address": shipping_address,
+        "shipping_address": checkout_info.shipping_address,
         "base_shipping_price": base_shipping_price,
         "shipping_price": shipping_price,
         "weight": checkout_info.checkout.get_total_weight(lines),
@@ -280,6 +285,7 @@ def _create_line_for_order(
     else:
         tax_class = product.product_type.tax_class
 
+    print("in before OrderLine")
     line = OrderLine(  # type: ignore[misc] # see below:
         product_name=product_name,
         variant_name=variant_name,
@@ -306,6 +312,7 @@ def _create_line_for_order(
         private_metadata=checkout_line.private_metadata,
         **get_tax_class_kwargs_for_order_line(tax_class),
     )
+    print("in before line_discounts")
 
     line_discounts = _create_order_line_discounts(checkout_line_info, line)
     if line_discounts:
@@ -326,6 +333,7 @@ def _create_line_for_order(
         line.unit_discount_reason = unit_discount_reason
 
     is_digital = line.is_digital
+    print("in before line_info")
     line_info = OrderLineInfo(
         line=line,
         quantity=quantity,
@@ -335,6 +343,8 @@ def _create_line_for_order(
         warehouse_pk=checkout_info.delivery_method_info.warehouse_pk,
         line_discounts=line_discounts,
     )
+    print("in before return")
+    print(line_info)
 
     return line_info
 
@@ -396,6 +406,7 @@ def _create_lines_for_order(
     check_stock_and_preorder_quantity_bulk(
         variants,
         country_code,
+        # None,   # TODO: Don't care about country_code for now
         quantities,
         checkout_info.channel.slug,
         global_quantity_limit=None,
@@ -404,7 +415,10 @@ def _create_lines_for_order(
         existing_lines=lines,
         replace=True,
         check_reservations=True,
+        rental_start=checkout_info.checkout.rental_start,
+        rental_end=checkout_info.checkout.rental_end
     )
+    print("reached here")
     return [
         _create_line_for_order(
             manager,
@@ -697,7 +711,8 @@ def _prepare_checkout_with_transactions(
     redirect_url: Optional[str],
 ):
     """Prepare checkout object with transactions to complete the checkout process."""
-    clean_billing_address(checkout_info, CheckoutErrorCode)
+    # TODO: check if it is ok to ignore billing address since it is handled by stripe
+    # clean_billing_address(checkout_info, CheckoutErrorCode)
     if (
         checkout_info.checkout.authorize_status != CheckoutAuthorizeStatus.FULL
         and not checkout_info.channel.allow_unpaid_orders
@@ -981,6 +996,7 @@ def _create_order_lines_from_checkout_lines(
     order_pk: Union[str, UUID],
     prices_entered_with_tax: bool,
 ) -> List[OrderLineInfo]:
+    print("in here")
     order_lines_info = _create_lines_for_order(
         manager,
         checkout_info,
@@ -1092,6 +1108,7 @@ def _create_order_from_checkout(
     metadata_list: Optional[List] = None,
     private_metadata_list: Optional[List] = None,
 ):
+    print("A")
     from ..order.utils import add_gift_cards_to_order
 
     site_settings = Site.objects.get_current().settings
@@ -1152,6 +1169,7 @@ def _create_order_from_checkout(
         )
 
     # order
+    print("B")
     order = Order.objects.create(  # type: ignore[misc] # see below:
         status=status,
         language_code=checkout_info.checkout.language_code,
@@ -1179,6 +1197,7 @@ def _create_order_from_checkout(
     # checkout discount
     _handle_checkout_discount(order, checkout_info.checkout)
 
+    print("C")
     # lines
     order_lines_info = _create_order_lines_from_checkout_lines(
         checkout_info=checkout_info,
@@ -1187,7 +1206,7 @@ def _create_order_from_checkout(
         order_pk=order.pk,
         prices_entered_with_tax=prices_entered_with_tax,
     )
-
+    print("D")
     # update undiscounted order total
     undiscounted_total = (
         sum(
@@ -1212,6 +1231,7 @@ def _create_order_from_checkout(
         manager=manager,
         reservation_enabled=reservation_enabled,
     )
+    print("E")
 
     # giftcards
     currency = checkout_info.checkout.currency
@@ -1227,6 +1247,7 @@ def _create_order_from_checkout(
     checkout_info.checkout.payment_transactions.update(order=order, checkout_id=None)
     update_order_charge_data(order, with_save=False)
     update_order_authorize_data(order, with_save=False)
+    print("F")
 
     # tax settings
     update_order_display_gross_prices(order)
@@ -1348,8 +1369,10 @@ def complete_checkout(
     metadata_list: Optional[List] = None,
     private_metadata_list: Optional[List] = None,
 ) -> Tuple[Optional[Order], bool, dict]:
+    print("in complete_checkout")
     transactions = checkout_info.checkout.payment_transactions.all()
     fetch_checkout_data(checkout_info, manager, lines)
+    print("in complete_checkout B")
 
     # When checkout is zero, we don't need any transaction to cover the checkout total.
     # We check if checkout is zero, and we also check what flow for marking an order as
@@ -1360,12 +1383,15 @@ def complete_checkout(
         checkout_info.channel.order_mark_as_paid_strategy
         == MarkAsPaidStrategy.TRANSACTION_FLOW
     )
+    print("in complete_checkout C")
+
     if (
         transactions
         or checkout_info.channel.allow_unpaid_orders
         or checkout_is_zero
         and is_transaction_flow
     ):
+        print("in complete_checkout D")
         order = complete_checkout_with_transaction(
             manager=manager,
             checkout_info=checkout_info,
@@ -1376,8 +1402,10 @@ def complete_checkout(
             metadata_list=metadata_list,
             private_metadata_list=private_metadata_list,
         )
+        print("in complete_checkout E")
         return order, False, {}
 
+    print("in complete_checkout F")
     return complete_checkout_with_payment(
         manager=manager,
         checkout_pk=checkout_info.checkout.pk,

@@ -156,9 +156,8 @@ class Order(ModelWithMetadata, ModelWithExternalReference):
     )
     # Looking at start and end date should be sufficient mostly, but there could be cases of early/
     # late checkout that might need to be handled
-    # TODO: consider if rental_start and end should be required
-    rental_start = models.DateTimeField(blank=True, null=True)
-    rental_end = models.DateTimeField(blank=True, null=True)
+    rental_start = models.DateTimeField()
+    rental_end = models.DateTimeField()
     user_email = models.EmailField(blank=True, default="")
     original = models.ForeignKey(
         "self", null=True, blank=True, on_delete=models.SET_NULL

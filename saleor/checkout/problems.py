@@ -46,6 +46,8 @@ def get_insufficient_stock_lines(
             VARIANT_ID,
             CHANNEL_SLUG,
             COUNTRY_CODE,
+            any,
+            any
         ],
         Iterable[Stock],
     ],
@@ -57,7 +59,13 @@ def get_insufficient_stock_lines(
     for line_info in lines:
         variant_to_quantity_map[line_info.variant.id] += line_info.line.quantity
         variant_stocks = variant_stock_map.get(
-            (line_info.variant.id, line_info.channel.slug, country_code), []
+            (
+                line_info.variant.id,
+                line_info.channel.slug,
+                country_code,
+                line_info.line.checkout.rental_start,
+                line_info.line.checkout.rental_end
+            ), []
         )
         variant_to_available_quantity_map[line_info.variant.id] = sum(
             [

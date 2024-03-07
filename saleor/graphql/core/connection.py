@@ -326,6 +326,7 @@ def create_connection_slice(
     pageinfo_type=graphene.relay.PageInfo,
     max_limit: Optional[int] = None,
 ):
+    print("in create_connection_slice")
     _validate_slice_args(info, args, max_limit)
 
     if isinstance(iterable, list):

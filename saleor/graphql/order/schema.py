@@ -187,6 +187,7 @@ class OrderQueries(graphene.ObjectType):
             )
         qs = resolve_orders(info, channel)
         qs = filter_connection_queryset(qs, kwargs)
+        print(kwargs)
         return create_connection_slice(qs, info, kwargs, OrderCountableConnection)
 
     @staticmethod

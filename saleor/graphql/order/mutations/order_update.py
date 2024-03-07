@@ -27,6 +27,8 @@ class OrderUpdateInput(BaseInputObjectType):
     external_reference = graphene.String(
         description="External ID of this order." + ADDED_IN_310, required=False
     )
+    rental_start = graphene.DateTime(description="Starting datetime of the rental.", required=False)
+    rental_end = graphene.DateTime(description="Ending datetime of the rental.", required=False)
 
     class Meta:
         doc_category = DOC_CATEGORY_ORDERS
@@ -66,6 +68,15 @@ class OrderUpdate(DraftOrderCreate, ModelWithExtRefMutation):
         for key in draft_order_cleaned_input:
             if key in editable_fields:
                 cleaned_input[key] = draft_order_cleaned_input[key]
+
+
+        rental_start = data.get("rental_start")
+        rental_end = data.get("rental_end")
+        if rental_start is not None:
+            cleaned_input["rental_start"] = rental_start
+        if rental_end is not None:
+            cleaned_input["rental_end"] = rental_end
+        
         return cleaned_input
 
     @classmethod

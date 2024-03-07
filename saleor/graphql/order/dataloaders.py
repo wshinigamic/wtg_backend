@@ -2,6 +2,7 @@ from collections import defaultdict
 from typing import DefaultDict, Iterable, List, Tuple, cast
 
 from django.db.models import F
+from django.utils import timezone
 
 from ...order.models import (
     Fulfillment,
@@ -70,6 +71,36 @@ class OrdersByUserLoader(DataLoader):
         orders = Order.objects.using(self.database_connection_name).filter(
             user_id__in=keys
         )
+        orders_by_user_map = defaultdict(list)
+        for order in orders:
+            orders_by_user_map[order.user_id].append(order)
+        return [orders_by_user_map.get(user_id, []) for user_id in keys]
+
+
+class ActiveOrdersByUserLoader(DataLoader):
+    context_key = "active_order_by_user"
+
+    def batch_load(self, keys):
+        orders = Order.objects.using(self.database_connection_name).filter(
+            user_id__in=keys
+        ).filter(
+            rental_end__gte=timezone.now()
+        ).order_by("rental_start")
+        orders_by_user_map = defaultdict(list)
+        for order in orders:
+            orders_by_user_map[order.user_id].append(order)
+        return [orders_by_user_map.get(user_id, []) for user_id in keys]
+    
+
+class PastOrdersByUserLoader(DataLoader):
+    context_key = "past_order_by_user"
+
+    def batch_load(self, keys):
+        orders = Order.objects.using(self.database_connection_name).filter(
+            user_id__in=keys
+        ).filter(
+            rental_end__lt=timezone.now()
+        ).order_by("-rental_end")
         orders_by_user_map = defaultdict(list)
         for order in orders:
             orders_by_user_map[order.user_id].append(order)

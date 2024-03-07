@@ -184,6 +184,7 @@ class CheckoutComplete(BaseMutation, I18nMixin):
         normalization was turned off, we apply it here.
         Raises ValidationError when any address is not correct.
         """
+        print("in validate_checkout_addresses")
         shipping_address = checkout_info.shipping_address
         billing_address = checkout_info.billing_address
 
@@ -201,27 +202,28 @@ class CheckoutComplete(BaseMutation, I18nMixin):
                 )
                 if shipping_address_data != shipping_address.as_data():
                     shipping_address.save()
-
-        if not billing_address:
-            raise ValidationError(
-                {
-                    "billing_address": ValidationError(
-                        "Billing address is not set",
-                        code=CheckoutErrorCode.BILLING_ADDRESS_NOT_SET.value,
-                    )
-                }
-            )
-        billing_address_data = billing_address.as_data()
-        cls.validate_address(
-            billing_address_data,
-            address_type=AddressType.BILLING,
-            format_check=True,
-            required_check=True,
-            enable_normalization=True,
-            instance=billing_address,
-        )
-        if billing_address_data != billing_address.as_data():
-            billing_address.save()
+        print("in validate_checkout_addresses end")
+        # TODO: consider if removing the below is ok, just let stripe handle billing address as required
+        # if not billing_address:
+        #     raise ValidationError(
+        #         {
+        #             "billing_address": ValidationError(
+        #                 "Billing address is not set",
+        #                 code=CheckoutErrorCode.BILLING_ADDRESS_NOT_SET.value,
+        #             )
+        #         }
+        #     )
+        # billing_address_data = billing_address.as_data()
+        # cls.validate_address(
+        #     billing_address_data,
+        #     address_type=AddressType.BILLING,
+        #     format_check=True,
+        #     required_check=True,
+        #     enable_normalization=True,
+        #     instance=billing_address,
+        # )
+        # if billing_address_data != billing_address.as_data():
+        #     billing_address.save()
 
     @classmethod
     def perform_mutation(  # type: ignore[override]
