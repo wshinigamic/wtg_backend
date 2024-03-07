@@ -101,11 +101,11 @@ DATABASE_CONNECTION_REPLICA_NAME = "replica"
 
 DATABASES = {
     DATABASE_CONNECTION_DEFAULT_NAME: dj_database_url.config(
-        default="postgres://postgres:AbCdEfG987!@localhost:5432/wtg_backend",
+        default="postgres://saleor:saleor@localhost:5432/saleor",
         conn_max_age=DB_CONN_MAX_AGE,
     ),
     DATABASE_CONNECTION_REPLICA_NAME: dj_database_url.config(
-        default="postgres://postgres:AbCdEfG987!@localhost:5432/wtg_backend",
+        default="postgres://saleor:saleor@localhost:5432/saleor",
         # TODO: We need to add read only user to saleor platform,
         # and we need to update docs.
         # default="postgres://saleor_read_only:saleor@localhost:5432/saleor",
@@ -128,7 +128,6 @@ USE_TZ = True
 FORM_RENDERER = "django.forms.renderers.TemplatesSetting"
 
 EMAIL_URL = os.environ.get("EMAIL_URL")
-# EMAIL_URL = "smtp://AKIA47CR2IRE3CW2ZJZD:BJbEDvi8eoErIIg4IZmAeVxKCXKjt7CX5qbrq9Z1l5Cf@email-smtp.ap-southeast-2.amazonaws.com:587/?tls=True"
 SENDGRID_USERNAME = os.environ.get("SENDGRID_USERNAME")
 SENDGRID_PASSWORD = os.environ.get("SENDGRID_PASSWORD")
 if not EMAIL_URL and SENDGRID_USERNAME and SENDGRID_PASSWORD:
@@ -154,15 +153,13 @@ ENABLE_SSL: bool = get_bool_from_env("ENABLE_SSL", False)
 # URL on which Saleor is hosted (e.g., https://api.example.com/). This has precedence
 # over ENABLE_SSL and Shop.domain when generating URLs pointing to itself.
 PUBLIC_URL: Optional[str] = get_url_from_env("PUBLIC_URL", schemes=["http", "https"])
-# TODO: Set env var instead
-PUBLIC_URL = "https://wtg-backend.ngrok.app"
 if PUBLIC_URL:
     if os.environ.get("ENABLE_SSL") is not None:
         warnings.warn("ENABLE_SSL is ignored on URL generation if PUBLIC_URL is set.")
     ENABLE_SSL = urlparse(PUBLIC_URL).scheme.lower() == "https"
 
 if ENABLE_SSL:
-    SECURE_SSL_REDIRECT = not (DEBUG or IS_REVERSE_PROXIED)
+    SECURE_SSL_REDIRECT = not DEBUG
 
 DEFAULT_FROM_EMAIL: str = os.environ.get(
     "DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "noreply@example.com"
@@ -439,7 +436,7 @@ TEST_RUNNER = "saleor.tests.runner.PytestTestRunner"
 
 PLAYGROUND_ENABLED = get_bool_from_env("PLAYGROUND_ENABLED", True)
 
-ALLOWED_HOSTS = get_list(os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1,10.0.2.2,wtg-backend.ngrok.app"))
+ALLOWED_HOSTS = get_list(os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1"))
 ALLOWED_GRAPHQL_ORIGINS: List[str] = get_list(
     os.environ.get("ALLOWED_GRAPHQL_ORIGINS", "*")
 )
@@ -858,9 +855,8 @@ RESET_PASSWORD_LOCK_TIME = parse(
 )
 
 # Lock time for request confirmation email mutation per user
-# TODO: set 1 minute?
 CONFIRMATION_EMAIL_LOCK_TIME = parse(
-    os.environ.get("CONFIRMATION_EMAIL_LOCK_TIME", "15 seconds")
+    os.environ.get("CONFIRMATION_EMAIL_LOCK_TIME", "15 minutes")
 )
 
 # Time threshold to update user last_login when performing requests with OAUTH token.
@@ -868,5 +864,4 @@ OAUTH_UPDATE_LAST_LOGIN_THRESHOLD = parse(
     os.environ.get("OAUTH_UPDATE_LAST_LOGIN_THRESHOLD", "15 minutes")
 )
 
-
-SEARCH_URI = "http://127.0.0.1:8001/update-scores"
+SEARCH_URI = os.environ.get("SEARCH_URI", None)
