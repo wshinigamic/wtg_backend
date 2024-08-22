@@ -2,6 +2,7 @@ import sys
 from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
+    Any,
     DefaultDict,
     Dict,
     Iterable,
@@ -408,36 +409,23 @@ class StocksWithAvailableQuantityByProductVariantIdCountryCodeAndChannelLoader(
         # a handful of unique countries but may access thousands of product variants
         # so it's cheaper to execute one query per country.
         variants_by_country_and_channel: DefaultDict[
-            Tuple[CountryCode, str], List[int]
+            Tuple[CountryCode, str, Any, Any], List[int]
         ] = defaultdict(list)
-        start = []
-        end = []
         for variant_id, country_code, channel_slug, datetime_start, datetime_end in keys:
-            variants_by_country_and_channel[(country_code, channel_slug)].append(
+            variants_by_country_and_channel[(country_code, channel_slug, datetime_start, datetime_end)].append(
                 variant_id
             )
-            start.append(datetime_start)
-            end.append(datetime_end)
-
-        # Check if all values in start/end are the same respectively. 
-        # TODO: support the general case where each start and end can be different
-        if start.count(start[0]) != len(start):
-            raise ValueError("Batch loading only supported for same datetime_start")
-        if end.count(end[0]) != len(end):
-            raise ValueError("Batch loading only supported for same datetime_end")
-        start = start[0]
-        end = end[0]
 
         # For each country code execute a single query for all product variants.
         stocks_by_variant_and_country: DefaultDict[
             VariantIdCountryCodeChannelSlug, List[Stock]
         ] = defaultdict(list)
         for key, variant_ids in variants_by_country_and_channel.items():
-            country_code, channel_slug = key
-            variant_ids_stocks = self.batch_load_stocks_by_country(
-                country_code, channel_slug, variant_ids, start, end
+            country_code, channel_slug, datetime_start, datetime_end = key
+            stocks = self.batch_load_stocks_by_country(
+                country_code, channel_slug, variant_ids, datetime_start, datetime_end
             )
-            for variant_id, stocks in variant_ids_stocks:
+            for variant_id, stocks in stocks:
                 stocks_by_variant_and_country[
                     (variant_id, country_code, channel_slug)
                 ].extend(stocks)

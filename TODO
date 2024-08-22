@@ -133,7 +133,7 @@ F:\Downloads\ngrok-v3-stable-windows-amd64\ngrok.exe start --config \\wsl.localh
 saleor_dashboard - pnpm run dev (if npm run dev, then there is a need to build and hit graphql error)
 
 npx uri-scheme open exp://127.0.0.1:19000/--/confirmEmail?email=test_email14%40weartogo.app&token=c1vmg7-7143387c785d19b4b610b168ec028628
-adb shell am start -a android.intent.action.VIEW -d "exp://127.0.0.1:19000/--/confirmEmail?email=test_email15%40weartogo.app\&token=c2ctpe-361f0b06e0e23004782fa75713a51207"
+adb shell am start -a android.intent.action.VIEW -d "exp://192.168.50.246:8081/--/confirmEmail?email=customer6%40weartogo.app\&token=c4iu4j-49720e6af354d5c9e7c35e44a987d945"
 Need to add "\" before the "&" in the url when testing in adb
 
 
@@ -512,3 +512,4 @@ App installation
 Install stripe through graphql playground and python manage.py runserver
 Afterwards, run server with uvicorn and configure through saleor_dashboard
 
+Must activate email plugin through saleor_dashboard

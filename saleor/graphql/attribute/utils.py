@@ -406,6 +406,7 @@ class AttributeAssignmentMixin:
                     AttributeInputType.DROPDOWN,
                     AttributeInputType.MULTISELECT,
                     AttributeInputType.SWATCH,
+                    AttributeInputType.FILE,
                 )
             )
             if is_handled_by_values_field:
