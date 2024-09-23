@@ -2,6 +2,7 @@ import ast
 import logging
 import os
 import os.path
+import time
 import warnings
 from datetime import timedelta
 from typing import List, Optional
@@ -13,6 +14,7 @@ import django_cache_url
 import django_stubs_ext
 import jaeger_client.config
 import pkg_resources
+import requests
 import sentry_sdk
 import sentry_sdk.utils
 from celery.schedules import crontab
@@ -56,6 +58,22 @@ def get_url_from_env(name, *, schemes=None) -> Optional[str]:
     return None
 
 
+def get_ecs_container_public_ip():
+    ECS_CONTAINER_METADATA_URI_V4 = os.environ.get("ECS_CONTAINER_METADATA_URI_V4")
+    if not ECS_CONTAINER_METADATA_URI_V4:
+        return None
+
+    try:
+        response = requests.get(ECS_CONTAINER_METADATA_URI_V4, timeout=5)
+        if response.status_code == 200:
+            metadata = response.json()
+            print("metadata", metadata)
+            return metadata.get("Networks", [{}])[0].get("IPv4Addresses", [None])[0]
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred: {e}")
+    return None    
+
+
 DEBUG = get_bool_from_env("DEBUG", True)
 
 SITE_ID = 1
@@ -85,6 +103,7 @@ if not ALLOWED_CLIENT_HOSTS:
         )
 
 ALLOWED_CLIENT_HOSTS = get_list(ALLOWED_CLIENT_HOSTS)
+print("allowed_client_hosts", ALLOWED_CLIENT_HOSTS)
 
 INTERNAL_IPS = get_list(os.environ.get("INTERNAL_IPS", "127.0.0.1"))
 
@@ -149,6 +168,8 @@ EMAIL_USE_SSL: bool = email_config.get("EMAIL_USE_SSL", False)
 
 ENABLE_SSL: bool = get_bool_from_env("ENABLE_SSL", False)
 # ENABLE_SSL: bool = get_bool_from_env("ENABLE_SSL", True)
+
+print(EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, EMAIL_HOST, EMAIL_PORT, EMAIL_BACKEND, EMAIL_USE_TLS, EMAIL_USE_SSL)
 
 # URL on which Saleor is hosted (e.g., https://api.example.com/). This has precedence
 # over ENABLE_SSL and Shop.domain when generating URLs pointing to itself.
@@ -436,7 +457,13 @@ TEST_RUNNER = "saleor.tests.runner.PytestTestRunner"
 
 PLAYGROUND_ENABLED = get_bool_from_env("PLAYGROUND_ENABLED", True)
 
+# ALLOWED_HOSTS = ["*"]
 ALLOWED_HOSTS = get_list(os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1"))
+public_ip = get_ecs_container_public_ip()
+if public_ip:
+    ALLOWED_HOSTS.append(public_ip)
+# else:
+#     ALLOWED_HOSTS = get_list(os.environ.get("ALLOWED_HOSTS", "localhost,127.0.0.1"))
 ALLOWED_GRAPHQL_ORIGINS: List[str] = get_list(
     os.environ.get("ALLOWED_GRAPHQL_ORIGINS", "*")
 )

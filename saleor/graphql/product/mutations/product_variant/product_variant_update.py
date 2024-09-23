@@ -162,7 +162,7 @@ class ProductVariantUpdate(ProductVariantCreate, ModelWithExtRefMutation):
             sku=sku,
             input=input,
         )
-        COLOR_ATTRIBUTE_NAME = "color"
+        COLOR_ATTRIBUTE_NAME = "Color"
         color_value = instance.attributes.get(assignment__attribute__name=COLOR_ATTRIBUTE_NAME).values.all()[0]
 
         data = input

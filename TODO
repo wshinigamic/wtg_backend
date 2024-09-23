@@ -1,3 +1,7 @@
+BUG TO SOLVE
+- Mismatch in time: see saleor > product > managers.py > ProductsQueryset > published
+  today seems to be earlier than published_at. So product doesn't show.
+
 Vendor (New app)
 -For multi-vendor support
 -Check warehouse
@@ -129,6 +133,7 @@ DEBUG REACT
 react-devtools
 
 F:\Downloads\ngrok-v3-stable-windows-amd64\ngrok.exe start --config \\wsl.localhost\Ubuntu-20.04\home\gan\saleor-app-payment-stripe\ngrok.yml --all
+F:\Downloads\ngrok-v3-stable-windows-amd64\ngrok.exe http 3000 --domain https://solely-ultimate-hare.ngrok-free.app/
 
 saleor_dashboard - pnpm run dev (if npm run dev, then there is a need to build and hit graphql error)
 

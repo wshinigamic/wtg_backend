@@ -1,5 +1,6 @@
 import itertools
 import uuid
+from datetime import timedelta
 from typing import (
     TYPE_CHECKING,
     Iterable,
@@ -239,10 +240,8 @@ class StockQuerySet(models.QuerySet):
                     "reservations__quantity_reserved",
                     filter=(
                         Q(reservations__reserved_until__gt=timezone.now()) &
-                        (Q(reservations__checkout_line__checkout__rental_start__gte=datetime_start) &
-                        Q(reservations__checkout_line__checkout__rental_start__lte=datetime_end)) |
-                        (Q(reservations__checkout_line__checkout__rental_end__gte=datetime_start) &
-                        Q(reservations__checkout_line__checkout__rental_end__lte=datetime_end))
+                        Q(allocations__order_line__order__rental_start__lte=datetime_end + timedelta(days=7)) &
+                        Q(allocations__order_line__order__rental_end__gte=datetime_start - timedelta(days=7))
                     ),
                 ),
                 0,
@@ -250,15 +249,14 @@ class StockQuerySet(models.QuerySet):
         )
     
     def annotate_allocated_quantity(self, datetime_start, datetime_end):
+        # +-7 days to account for the buffer period
         return self.annotate(
             allocated_quantity=Coalesce(
                 Sum(
                     "allocations__quantity_allocated",
                     filter=(
-                        (Q(allocations__order_line__order__rental_start__gte=datetime_start) &
-                        Q(allocations__order_line__order__rental_start__lte=datetime_end)) |
-                        (Q(allocations__order_line__order__rental_end__gte=datetime_start) &
-                        Q(allocations__order_line__order__rental_end__lte=datetime_end))
+                        Q(allocations__order_line__order__rental_start__lte=datetime_end + timedelta(days=7)) &
+                        Q(allocations__order_line__order__rental_end__gte=datetime_start - timedelta(days=7))
                     )
                 ),
                 0,
