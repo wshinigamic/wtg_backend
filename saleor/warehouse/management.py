@@ -618,7 +618,7 @@ def deallocate_stock_for_order(order: "Order", manager: PluginsManager):
             )
 
     allocations.update(quantity_allocated=0)
-    Stock.objects.bulk_update(stocks_to_update, ["quantity_allocated"])
+    # Stock.objects.bulk_update(stocks_to_update, ["quantity_allocated"])
 
 
 @traced_atomic_transaction()

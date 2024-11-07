@@ -138,10 +138,9 @@ F:\Downloads\ngrok-v3-stable-windows-amd64\ngrok.exe http 3000 --domain https://
 saleor_dashboard - pnpm run dev (if npm run dev, then there is a need to build and hit graphql error)
 
 npx uri-scheme open exp://127.0.0.1:19000/--/confirmEmail?email=test_email14%40weartogo.app&token=c1vmg7-7143387c785d19b4b610b168ec028628
-adb shell am start -a android.intent.action.VIEW -d "exp://192.168.50.246:8081/--/confirmEmail?email=customer6%40weartogo.app\&token=c4iu4j-49720e6af354d5c9e7c35e44a987d945"
+adb shell am start -a android.intent.action.VIEW -d "exp://192.168.50.246:8081/--/confirmEmail?email=testaccount19%40weartogo.app\&token=cfv9ik-dc7bbfc4b8ac402e978e17f36418411b"
 Need to add "\" before the "&" in the url when testing in adb
-
-
+adb shell am start -a android.intent.action.VIEW -d "exp://192.168.50.246:8081/--/resetPassword?email=testaccount%40weartogo.app\&token=cdq92x-886079f8c558e9298fe1ea5719b8899b"
 -------------------------------------------------
 Authentication
 

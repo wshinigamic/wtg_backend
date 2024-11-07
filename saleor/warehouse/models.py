@@ -447,7 +447,7 @@ class Allocation(models.Model):
     )
     quantity_allocated = models.PositiveIntegerField(default=0)
 
-    # objects = AllocationManager()
+    objects = AllocationManager()
 
     class Meta:
         unique_together = [["order_line", "stock"]]
